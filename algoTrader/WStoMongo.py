@@ -12,17 +12,14 @@ db = mongo_client.algodb_test
 tickercol = db.tickercol
 level2col = db.level2col
 
-def initTickerDataDraw():
-#   State format for data draw
-    print ('Format for initTickerDataDraw(products): \n   prod: BTC-USD')
-
+def initTickerDataDraw(prod, limiter):
 #   Define products and cahnnels
-    prod = [raw_input('Product: ')]
+    prodf = [prod]
 #   Set up websocket class to reference
     class MyWebsocketClient(gdax.WebsocketClient):
         def on_open(self):
             self.url = "wss://ws-feed.gdax.com/"
-            self.products = prod
+            self.products = prodf
             self.channels = ['ticker']
             self.message_count = 0
             self.mongo_collection = tickercol
@@ -32,16 +29,12 @@ def initTickerDataDraw():
             self.mongo_collection.insert_one(msg)
         def on_close(self):
             print("-- Data draw complete! --")
-
-#   testing cycle limiter
-    n = int(raw_input('Max number of records to pull: '))
 #   Call websocket class and initiate websocket
     wsClient = MyWebsocketClient(prod)
     wsClient.start()
     print(wsClient.url, wsClient.products, wsClient.channels,
           wsClient.mongo_collection) #debug
     print '\ndata draw started\n'
-
 #   Handles waiting for data to complete.
     try:
 #       Handles waiting for connection and data to hit database
@@ -54,7 +47,10 @@ def initTickerDataDraw():
         else:
             pass
 #       Update current state collection every __ messages
-        while (wsClient.message_count != n):
+        while (limiter < nLoops):
+            if wsClient.message_count > 1:
+                oldTic = tickerFeed.find().sort('sequence',pymongo.DESCENDING).limit(1)
+                tickerFeed.delete_one(oldTic)
 #           Check if "quit websockets" has been called
             if quitCall:
                 raise Exception

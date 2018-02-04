@@ -47,7 +47,6 @@ while True:
         prod = raw_input('Product: ')
         try:
             ll = threading.Thread(target = WStoMongo.initLevel2DataDraw,args=(prod,))
-            #ll.setDaemon(True)
             ll.start()
         except EOFError:
             print(sys.exc_info())
@@ -59,9 +58,13 @@ while True:
             sys.exc_clear()
 #   Start ticker feed data draw
     elif selFile == 't' or selFile == 'T':
+        #   State format for data draw
+            print ('Format for initTickerDataDraw(products): \n   prod: BTC-USD')
+        #   Define products
+            prod = [raw_input('Product: ')]
+            n = int(raw_input('Limiter qty: '))
         try:
-            threading.Thread(target = WStoMongo.initTickerDataDraw())
-            t.setDaemon(True)
+            threading.Thread(target = WStoMongo.initTickerDataDraw,args=(prod, n))
             t.start()
         except EOFError:
             sys.exc_info()

@@ -1,6 +1,5 @@
 # level2 data handling
-import pymongo
-import plotly
+import pymongo, gdax, plotly
 from plotly.graph_objs import Scatter, Layout
 
 db = pymongo.MongoClient().algodb_test
@@ -55,10 +54,11 @@ def lSnapshotSplit():
 # Graph level2 snapshot of order book (from current state l2 data)
 def lGraph(priceRange):
 #   store latest ticker price
-    tickerCur = tickerFeed.find().sort('sequence',pymongo.DESCENDING).limit(1)
-    tickerList = list(tickerCur)
-    tickerPrice = float(tickerList[0]['price'])
+#    tickerCur = tickerFeed.find().sort('sequence',pymongo.DESCENDING).limit(1)
+#    tickerList = list(tickerCur)
+#    tickerPrice = float(tickerList[0]['price'])
 #   define required variables
+    tickerPrice = gdax.get_product_ticker(product_id='BTC-USD')
     vBidTot = 0
     vAskTot = 0
     x = []
