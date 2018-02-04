@@ -9,27 +9,32 @@ snapColl = db.level2current
 tickerFeed = db.tickercol
 
 # Update level 2 dataset to maintain current state
-def lUpdateData():
-    # iterate snapshot process over l2update documents
-    # update + upsert=True for all options
-    # understand buy vs bid and sell vs ask
-    pass
-
+def lUpdateData(updateCount):
+#   Pull sorted cursor data from db
+    updateData = fullData.find({'type':'l2update'}).sort('time',pymongo.ASCENDING).limit(updateCount)
+#   Loop over cursor data to update/insert/delete items in level2current coll
+    try:
+        for i in updateData:
+            if float(i['changes'][0][2]) == 0:
+                rresult = snapColl.delete_one({'price': float(i['changes'][0][1])})
+            else:
+                result = snapColl.update_one({'price': float(i['changes'][0][1])},
+                                            {'$set':{'volume':float(i['changes'][0][2])}},
+                                            upsert = True)
+#           Delete doc from level2col once level2current has been updated
+            fullData.delete_one(i)
+    except:
+        KeyboardInterrupt
 
 
 # Split snapshot into its own collections
 def lSnapshotSplit():
-# define document in db to process from
+#   define document in db to process from
     snap = fullData.find_one()
-
-#    print base['bids'][0][0]
-#    print base['asks'][0][0]
-
 #   define coordinate variables
     tags = ['price','volume']
     newins = []
     splitSnap = []
-
 #   iterate across (price, volume) tuples to build x/y coordinate lists
 #   ---bids portion
     for i in snap['bids']:
@@ -42,10 +47,9 @@ def lSnapshotSplit():
 #   ---insert into new database collection
     for k in splitSnap:
         snapColl.insert_one(k)
-
 #   delete snapshot documents from incoming messages collections
-#    fullData.delete_one({'type': 'snapshot'})
-#    fullData.delete_one({'type': 'subscriptions'})
+    fullData.delete_one({'type': 'snapshot'})
+    fullData.delete_one({'type': 'subscriptions'})
 
 
 # Graph level2 snapshot of order book (from current state l2 data)
@@ -54,13 +58,11 @@ def lGraph(priceRange):
     tickerCur = tickerFeed.find().sort('sequence',pymongo.DESCENDING).limit(1)
     tickerList = list(tickerCur)
     tickerPrice = float(tickerList[0]['price'])
-
 #   define required variables
     vBidTot = 0
     vAskTot = 0
     x = []
     y = []
-
 #   calculate bid side data and create y-axis points
     for doc in snapColl.find().sort('price',pymongo.DESCENDING):
         if tickerPrice - priceRange < doc['price'] <= tickerPrice:
@@ -78,55 +80,6 @@ def lGraph(priceRange):
 #   plot graph with title and axis labels
     plotly.offline.plot({"data": [Scatter(x=x,y=y)],
                          "layout": Layout(title="Open Trades Volume Chart<br>Cur Price: "+str(tickerPrice),
-                                          xaxis=dict(title=('Price (USD/BTC)')),
-                                          yaxis=dict(title=('Volume (BTC)'))
-                                          )
-                         })
-
-
-# Graph level2 snapshot of order book (from original snapshot)
-def lGraph2():
-# define document in db to process from
-    base = fullData.find_one()
-
-#    print base['bids'][0][0]
-#    print base['asks'][0][0]
-
-#   define coordinate variables
-    x = []
-    y = []
-    xb = []
-    yb = []
-    vbtot = 0
-    xa = []
-    ya = []
-    vatot = 0
-
-#   iterate across (price, volume) tuples to build x/y coordinate lists
-#   ---bids portion
-    for pb,vb in base['bids']:
-        #print p
-        #print v
-        if float(pb) > 8000:
-            vbtot = vbtot + float(vb)
-            x.insert(0, pb)
-            y.insert(0, vbtot)
-            xb.insert(0, pb)
-            yb.insert(0, vbtot)
-#   ---asks portion
-    for pa,va in base['asks']:
-        if float(pa) < 9800:
-            vatot = vatot + float(va)
-            x.append(pa)
-            y.append(vatot)
-            xa.append(pa)
-            ya.append(vatot)
-
-    #print x
-    #print y
-
-    plotly.offline.plot({"data": [Scatter(x=x,y=y)],
-                         "layout": Layout(title="Open Trades Volume Chart",
                                           xaxis=dict(title=('Price (USD/BTC)')),
                                           yaxis=dict(title=('Volume (BTC)'))
                                           )

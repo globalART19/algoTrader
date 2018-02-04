@@ -23,7 +23,7 @@ def msema(n):
     print first
     for doc in new:
         print doc
-        curVal = new.get(doc['hclose'])
+        curVal = float(doc['hclose'])
         curSum = curSum + curVal
     ema = (2 * first['hclose'] + curSum) / 13
     print ema

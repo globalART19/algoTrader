@@ -1,16 +1,17 @@
 # Trading algorithm structure and initialization file.
 
-import gdax
-import pymongo
-import collections
+import gdax, pymongo, collections, threading, sys
+import WStoMongo, Level2Data
 
 db = pymongo.MongoClient().algodb_test
+quitCall = False
 
 print "Welcome to the Trahan Autonomous Trading Program!"
 
 while True:
     print ('''Choose File: (h = history, w = websocket, l2 = level2 feed,
-           l2g = graph level 2 data, t = ticker feed, c = clear dbs''')
+           l2g = graph level 2 data, t = ticker feed, c = clear dbs,
+           End threads (q**): ie. ql2 quit l2 thread''')
     selFile = raw_input(">>> ")
 
 #   Import historical data
@@ -30,21 +31,53 @@ while True:
               '   level2current \n   tickercol ')
 #   Start generic feed data draw
     elif selFile == 'w' or selFile == 'W':
-        import WStoMongo
-        WStoMongo.initDataDraw(prods, chans)
+        try:
+            w = threading.Thread(target = WStoMongo.initDataDraw())
+            w.setDaemon(True)
+            w.start()
+        except:
+            print(sys.exc_info())
+            print("Error: unable to start thread")
+        finally:
+            sys.exc_clear()
 #   Start Level 2 feed data draw
     elif selFile == 'l2' or selFile == 'l2':
-        import WStoMongo
-        WStoMongo.initLevel2DataDraw()
+#          State format for data draw
+        print ('Format for initLevel2DataDraw(products): \n   prod: BTC-USD')
+        prod = raw_input('Product: ')
+        try:
+            ll = threading.Thread(target = WStoMongo.initLevel2DataDraw,args=(prod,))
+            #ll.setDaemon(True)
+            ll.start()
+        except EOFError:
+            print(sys.exc_info())
+            print('End of file')
+        except:
+            print(sys.exc_info())
+            print("Error: unable to start thread")
+        finally:
+            sys.exc_clear()
 #   Start ticker feed data draw
     elif selFile == 't' or selFile == 'T':
-        import WStoMongo
-        WStoMongo.initTickerDataDraw()
+        try:
+            threading.Thread(target = WStoMongo.initTickerDataDraw())
+            t.setDaemon(True)
+            t.start()
+        except EOFError:
+            sys.exc_info()
+            print('End of file')
+        except:
+            print(sys.exc_info())
+            print("Error: unable to start thread")
+        finally:
+            sys.exc_clear()
 #   Graph current level2 data
     elif selFile == 'l2g' or selFile == 'L2G':
-        import Level2Data
         prange = float(raw_input('Price range ($): '))
         Level2Data.lGraph(prange)
+    elif selFile == 'ql2':
+        print ('# of Threads: ', threading.activeCount())
+        quitCall = True
 #   Handler for no match
     else:
         print 'Selection not valid'
