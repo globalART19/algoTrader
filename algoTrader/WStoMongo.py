@@ -107,7 +107,7 @@ def initLevel2DataDraw(prod):
         if(cur["type"] == "error"):
             raise Exception
 #       If successful subscription, call collection current state setup
-        ss = threading.Thread(target=Level2Data.lSnapshotSplit,args=())
+        ss = threading.Thread(target=Level2Data.lSnapshotSplit,args=(), name="snapshot")
         try:
             #ss.setDaemon(True)
             #ss.start()

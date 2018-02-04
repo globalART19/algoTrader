@@ -10,9 +10,11 @@ To Do:
 - Start working on DataFunc and building that out!
 - Create proper indexes in Mongo to increase efficiency
 
+- linear or polynomial regression across l2current data for analysis?
 - Remove ticker data draw to mongo? Shouldn't be needed?
 
 Completed:
+- Add initial error handling to l2Graph()
 - Level 2 works!
 
 Best,

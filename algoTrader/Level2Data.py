@@ -1,5 +1,5 @@
 # level2 data handling
-import pymongo, gdax, plotly
+import pymongo, gdax, plotly, threading, sys
 from plotly.graph_objs import Scatter, Layout
 
 db = pymongo.MongoClient().algodb_test
@@ -35,20 +35,23 @@ def lSnapshotSplit():
     newins = []
     splitSnap = []
 #   iterate across (price, volume) tuples to build x/y coordinate lists
-#   ---bids portion
-    for i in snap['bids']:
-        newins = dict(zip(tags,[float(i[0]),float(i[1])]))
-        splitSnap.insert(0, newins)
-#   ---asks portion
-    for j in snap['asks']:
-        newins = dict(zip(tags,[float(j[0]),float(j[1])]))
-        splitSnap.append(newins)
-#   ---insert into new database collection
-    for k in splitSnap:
-        snapColl.insert_one(k)
-#   delete snapshot documents from incoming messages collections
-    fullData.delete_one({'type': 'snapshot'})
-    fullData.delete_one({'type': 'subscriptions'})
+    try:
+#      ---bids portion
+        for i in snap['bids']:
+            newins = dict(zip(tags,[float(i[0]),float(i[1])]))
+            splitSnap.insert(0, newins)
+#       ---asks portion
+        for j in snap['asks']:
+            newins = dict(zip(tags,[float(j[0]),float(j[1])]))
+            splitSnap.append(newins)
+#       ---insert into new database collection
+        for k in splitSnap:
+            snapColl.insert_one(k)
+#       delete snapshot documents from incoming messages collections
+        fullData.delete_one({'type': 'snapshot'})
+        fullData.delete_one({'type': 'subscriptions'})
+    except:
+        KeyboardInterrupt
 
 
 # Graph level2 snapshot of order book (from current state l2 data)
@@ -63,24 +66,38 @@ def lGraph(priceRange):
     vAskTot = 0
     x = []
     y = []
-#   calculate bid side data and create y-axis points
-    for doc in snapColl.find().sort('price',pymongo.DESCENDING):
-        if tickerPrice - priceRange < doc['price'] <= tickerPrice:
-            vBidTot = vBidTot + doc['volume']
-            #print doc['price'], vBidTot
-            y.insert(0, vBidTot)
-#   calculate ask side data and append to y-axis points and store x-axis points
-    for doc in snapColl.find().sort('price',pymongo.ASCENDING):
-        if tickerPrice - priceRange < doc['price'] <= tickerPrice + priceRange:
-            x.append(doc['price'])
-        if tickerPrice < doc['price'] < tickerPrice + priceRange:
-            #print doc['price']
-            vAskTot = vAskTot + doc['volume']
-            y.append(vAskTot)
-#   plot graph with title and axis labels
-    plotly.offline.plot({"data": [Scatter(x=x,y=y)],
+    n = 0
+    try:
+#       Check if l2data is present
+        if("level2current" not in db.collection_names()):
+            print('Level2 data does not exist. Quitting...')
+            raise Exception
+#       Check if current state is currently processing and wait for completion
+        while ("snapshot" in threading.enumerate()):
+            if(n == 0):
+                print('Level2 data collection in process, waiting for completion')
+                n = 1
+            pass
+#       calculate bid side data and create y-axis points
+        for doc in snapColl.find().sort('price',pymongo.DESCENDING):
+            if tickerPrice - priceRange < doc['price'] <= tickerPrice:
+                vBidTot = vBidTot + doc['volume']
+                y.insert(0, vBidTot)
+#       calculate ask side data and append to y-axis points and store x-axis points
+        for doc in snapColl.find().sort('price',pymongo.ASCENDING):
+            if tickerPrice - priceRange < doc['price'] <= tickerPrice + priceRange:
+                x.append(doc['price'])
+            if tickerPrice < doc['price'] < tickerPrice + priceRange:
+                vAskTot = vAskTot + doc['volume']
+                y.append(vAskTot)
+#       plot graph with title and axis labels
+        plotly.offline.plot({"data": [Scatter(x=x,y=y)],
                          "layout": Layout(title="Open Trades Volume Chart<br>Cur Price: "+str(tickerPrice),
                                           xaxis=dict(title=('Price (USD/BTC)')),
                                           yaxis=dict(title=('Volume (BTC)'))
                                           )
                          })
+    except:
+        KeyboardInterrupt
+    finally:
+        sys.exc_clear()
