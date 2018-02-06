@@ -1,7 +1,7 @@
 # Trading algorithm structure and initialization file.
 
 import gdax, pymongo, collections, threading, sys
-import WStoMongo, Level2Data
+import WStoMongo, Level2Data, HistData
 
 db = pymongo.MongoClient().algodb_test
 quitCall = False
@@ -16,7 +16,22 @@ while True:
 
 #   Import historical data
     if selFile == 'h' or selFile == 'H':
-        import HistData
+#       State format for data draw
+        print ('Format for initTickerDataDraw(products, tRange, tInterval): \n   prod: BTC-USD')
+        hProd = raw_input('Product (ex. BTC-USD): ')
+        tRange = int(raw_input('Time range (in days): '))
+        tInterval = int(raw_input('Data point interval in mins (1, 5, 15, 60, 360, 1440): '))
+        try:
+            h = threading.Thread(target = HistData.popHistory,args=(hProd, tRange, tInterval))
+            h.start()
+        except EOFError:
+            sys.exc_info()
+            print('End of file')
+        except:
+            print(sys.exc_info())
+            print("Error: unable to start thread")
+        finally:
+            sys.exc_clear()
 #   Clear database
     elif selFile == 'c' or selFile == 'C':
         db.algoHistTable.drop()
@@ -42,11 +57,11 @@ while True:
             sys.exc_clear()
 #   Start Level 2 feed data draw
     elif selFile == 'l2' or selFile == 'l2':
-#          State format for data draw
+#       State format for data draw
         print ('Format for initLevel2DataDraw(products): \n   prod: BTC-USD')
-        prod = raw_input('Product: ')
+        l2Prod = raw_input('Product: ')
         try:
-            ll = threading.Thread(target = WStoMongo.initLevel2DataDraw,args=(prod,))
+            ll = threading.Thread(target = WStoMongo.initLevel2DataDraw,args=(l2Prod,))
             ll.start()
         except EOFError:
             print(sys.exc_info())
@@ -59,12 +74,12 @@ while True:
 #   Start ticker feed data draw
     elif selFile == 't' or selFile == 'T':
         #   State format for data draw
-            print ('Format for initTickerDataDraw(products): \n   prod: BTC-USD')
+        print ('Format for initTickerDataDraw(products, limiter): \n   prod: BTC-USD')
         #   Define products
-            prod = [raw_input('Product: ')]
-            n = int(raw_input('Limiter qty: '))
+        tProd = [raw_input('Product: ')]
+        n = int(raw_input('Limiter qty: '))
         try:
-            threading.Thread(target = WStoMongo.initTickerDataDraw,args=(prod, n))
+            t = threading.Thread(target = WStoMongo.initTickerDataDraw,args=(tProd, n))
             t.start()
         except EOFError:
             sys.exc_info()
