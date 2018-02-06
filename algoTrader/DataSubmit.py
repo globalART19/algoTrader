@@ -7,7 +7,8 @@ db = mongo_client.algodb_test
 histData = db.algoHistTable
 calcData = db.calcData
 
-dictTitles = ['price','m12ema','m26ema','mave','msig']
+def calcPopulate(n):
+    dictTitles = ['price','m12ema','m26ema','mave','msig']
 
 #for n in range(histData.count()):
 #    for doc in histData.update_one().skip(n).limit(1)

@@ -40,5 +40,7 @@ def popHistory(prod, timeRange, timeInt):
 #           Check for last loop condition to prevent overdraw
             if teCursor > tEnd:
                 teCursor = tEnd
+    except (KeyboardInterrupt, SystemExit):
+        pass
     except:
-        KeyboardInterrupt
+        print ('Unknown exception: popHistory')

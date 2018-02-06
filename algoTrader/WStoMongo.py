@@ -59,8 +59,8 @@ def initTickerDataDraw(prod, limiter):
     except Exception:
         print(sys.exc_info())
         print('Ticker data draw failed or quit')
-    except:
-        KeyboardInterrupt
+    except (KeyboardInterrupt, SystemExit):
+        pass
     finally:
         sys.exc_clear()
 
@@ -149,8 +149,8 @@ def initLevel2DataDraw(prod):
         print(sys.exc_info())
         print('Level 2 data draw failed or quit')
         sys.exc_clear()
-    except:
-        KeyboardInterrupt
+    except (KeyboardInterrupt, SystemExit):
+        pass
     finally:
         sys.exc_clear()
 #   Close websocket client and end data draw
@@ -206,13 +206,13 @@ def initDataDraw():
         print(sys.exc_info())
         print('Websocket data draw failed or quit')
         sys.exc_clear()
-    except:
-        KeyboardInterrupt
+    except (KeyboardInterrupt, SystemExit):
+        pass
 
     wsClient.close()
     print 'data draw complete'
 
-    cur = BTC_collection.find().sort([('sequence', -1)]).limit(1)
-    print cur
-    for doc in cur:
-        print doc
+    # cur = BTC_collection.find().sort([('sequence', -1)]).limit(1)
+    # print cur
+    # for doc in cur:
+    #     print doc

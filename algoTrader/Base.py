@@ -1,7 +1,7 @@
 # Trading algorithm structure and initialization file.
 
 import gdax, pymongo, collections, threading, sys
-import WStoMongo, Level2Data, HistData
+import WStoMongo, Level2Data, HistData, DataFunc
 
 db = pymongo.MongoClient().algodb_test
 quitCall = False
@@ -10,7 +10,7 @@ print "Welcome to the Trahan Autonomous Trading Program!"
 
 while True:
     print ('''Choose File: (h = history, w = websocket, l2 = level2 feed,
-           l2g = graph level 2 data, t = ticker feed, c = clear dbs,
+           l2g = graph level 2 data, t = ticker feed, d = delete dbs, c = calc history,
            End threads (q**): ie. ql2 quit l2 thread''')
     selFile = raw_input(">>> ")
 
@@ -32,8 +32,17 @@ while True:
             print("Error: unable to start thread")
         finally:
             sys.exc_clear()
-#   Clear database
     elif selFile == 'c' or selFile == 'C':
+        try:
+            c = threading.Thread(target = DataFunc.calcPopulate, args=())
+            c.start()
+        except:
+            print(sys.exc_info())
+            print("Error: unable to start thread")
+        finally:
+            sys.exc_clear()
+#   Clear database
+    elif selFile == 'd' or selFile == 'D':
         db.algoHistTable.drop()
         db.algoWebsocketTable.drop()
         db.algoWStest.drop()

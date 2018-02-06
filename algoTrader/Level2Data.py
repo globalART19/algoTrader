@@ -22,8 +22,10 @@ def lUpdateData(updateCount):
                                             upsert = True)
 #           Delete doc from level2col once level2current has been updated
             fullData.delete_one(i)
+    except (KeyboardInterrupt, SystemExit):
+        pass
     except:
-        KeyboardInterrupt
+        print ('Unknown exception: lUpdateData')
 
 
 # Split snapshot into its own collections
@@ -50,8 +52,10 @@ def lSnapshotSplit():
 #       delete snapshot documents from incoming messages collections
         fullData.delete_one({'type': 'snapshot'})
         fullData.delete_one({'type': 'subscriptions'})
+    except (KeyboardInterrupt, SystemExit):
+        pass
     except:
-        KeyboardInterrupt
+        print ('Unknown exception: lSnapshotSplit')
 
 
 # Graph level2 snapshot of order book (from current state l2 data)
@@ -97,7 +101,9 @@ def lGraph(priceRange):
                                           yaxis=dict(title=('Volume (BTC)'))
                                           )
                          })
+    except (KeyboardInterrupt, SystemExit):
+        pass
     except:
-        KeyboardInterrupt
+        print ('Unknown exception: l2Graph')
     finally:
         sys.exc_clear()

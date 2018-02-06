@@ -6,16 +6,37 @@ import gdax, time
 mongo_client = pymongo.MongoClient()
 db = mongo_client.algodb_test
 histData = db.algoHistTable
+calcData = db.calcData
 
-def calcPopulate(n):
-    
+def calcPopulate():
+#   Set db collection titles to be added
+    dictTitles = ['m12ema','m26ema','mave','msig']
+
+    nCount = histData.count()
+    batchSize = 100
+    nCur = 0
+    nSize = 100
+    if (nCount < 100):
+        nSize = nCount - 1
+    try:
+        while (nCur <= nCount):
+            batchCursor = histData.find().sort('htime', pymongo.ASCENDING).skip(nCur).limit(batchSize)
+            for doc in batchCursor:
+                calcArray = [m12ema(nCur), m26ema(nCur), mave(nCur), msig(nCur)]
+                calcUpdate = dict(zip(dictTitles,calcArray))
+                histData.update_one(doc['htime'], {'$push': calcUpdate})
+                nCur = nCur + 1
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except:
+        print ('Unknown exception: calcPopulate2')
 
 
 # MACD 12 period moving average
 def m12ema(n):
     curSum = 0
     if n < 12:
-        return
+        return ''
     new = histData.find().skip(n-11).limit(11)
     first = histData.find().skip(n-12).limit(1)
 #    print new
@@ -34,6 +55,8 @@ def m12ema(n):
 # MACD 26 period moving average
 def m26ema(n):
     curSum = 0
+    if ( n < 26 ):
+        return ''
     new = histData.find().skip(n-25).limit(25)
     first = histData.find().skip(n-26).limit(1)
     for doc in new:
@@ -48,11 +71,15 @@ def m26ema(n):
 
 # MACD average indicator
 def mave(n):
+    if (m12ema == '' or m26ema == ''):
+        return ''
     ave = m12ema(n) - m26ema(n)
 #    print ave
     return ave
 
 # MACD signal 9 period moving average indicator
 def msig(n):
+    if (n < 35):
+        return ''
     sig = mave(n-35)
     return sig
