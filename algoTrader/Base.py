@@ -1,7 +1,10 @@
 # Trading algorithm structure and initialization file.
 
-import gdax, pymongo, collections, threading, sys
+import gdax, pymongo, collections, threading, sys, os, subprocess
 import WStoMongo, Level2Data, HistData, DataFunc
+
+ f = open(os.devnull, 'w')
+ subprocess.Popen(['C:\\Python27\\MongoDB\\bin\\mongod'], stdout=f, stderr=f, shell=False)
 
 db = pymongo.MongoClient().algodb_test
 quitCall = False
@@ -34,7 +37,7 @@ while True:
             sys.exc_clear()
     elif selFile == 'c' or selFile == 'C':
         try:
-            c = threading.Thread(target = DataFunc.calcPopulate, args=())
+            c = threading.Thread(target = DataFunc.calcPopulateBulk, args=())
             c.start()
         except:
             print(sys.exc_info())
@@ -56,7 +59,7 @@ while True:
 #   Start generic feed data draw
     elif selFile == 'w' or selFile == 'W':
         try:
-            w = threading.Thread(target = WStoMongo.initDataDraw())
+            w = threading.Thread(target = WStoMongo.initDataDraw,args=())
             w.setDaemon(True)
             w.start()
         except:
@@ -67,10 +70,10 @@ while True:
 #   Start Level 2 feed data draw
     elif selFile == 'l2' or selFile == 'l2':
 #       State format for data draw
-        print ('Format for initLevel2DataDraw(products): \n   prod: BTC-USD')
-        l2Prod = raw_input('Product: ')
+        #print ('Format for initLevel2DataDraw(products): \n   prod: BTC-USD')
+        #l2Prod = raw_input('Product: ')
         try:
-            ll = threading.Thread(target = WStoMongo.initLevel2DataDraw,args=(l2Prod,))
+            ll = threading.Thread(target = WStoMongo.initLevel2DataDraw,args=('BTC-USD',))
             ll.start()
         except EOFError:
             print(sys.exc_info())
@@ -101,11 +104,19 @@ while True:
 #   Graph current level2 data
     elif selFile == 'l2g' or selFile == 'L2G':
         prange = float(raw_input('Price range ($): '))
-        Level2Data.lGraph(prange)
+        try:
+            g = threading.Thread(target = Level2Data.lGraph,args=(prange,))
+            g.start()
+        except:
+            print(sys.exc_info())
+            print("Error: unable to start thread")
+        finally:
+            sys.exc_clear()
     elif selFile == 'ql2':
         print ('# of Threads: ', threading.activeCount())
         quitCall = True
 #   Handler for no match
     else:
         print 'Selection not valid'
+        raise KeyboardInterrupt
         break

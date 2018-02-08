@@ -1,13 +1,14 @@
 # Holds all data manipulation and calculation functions
 
-import pymongo
-import gdax, time
+import pymongo, sys
+import gdax
 
 mongo_client = pymongo.MongoClient()
 db = mongo_client.algodb_test
 histData = db.algoHistTable
 calcData = db.calcData
 
+# Slowwwwwwww. Use calcPopulateBulk().
 def calcPopulate():
 #   Set db collection titles to be added
     dictTitles = ['m12ema','m26ema','mave','msig']
@@ -24,13 +25,38 @@ def calcPopulate():
             for doc in batchCursor:
                 calcArray = [m12ema(nCur), m26ema(nCur), mave(nCur), msig(nCur)]
                 calcUpdate = dict(zip(dictTitles,calcArray))
-                histData.update_one(doc['htime'], {'$push': calcUpdate})
+                histData.update_one(doc, {'$push': calcUpdate}, upsert = True)
                 nCur = nCur + 1
     except (KeyboardInterrupt, SystemExit):
         pass
     except:
         print ('Unknown exception: calcPopulate2')
+        print (sys.exc_info())
 
+def calcPopulateBulk():
+#   Set db collection titles to be added
+    dictTitles = ['m12ema','m26ema','mave','msig']
+    calcPush = []
+    nCount = histData.count()
+    batchSize = 1000
+    nCur = 0
+    batch = 0
+    try:
+        while (batch <= nCount/batchSize):
+            batchCursor = histData.find().sort('htime', pymongo.ASCENDING).skip(nCur).limit(batchSize)
+            for doc in batchCursor:
+                calcArray = [m12ema(nCur), m26ema(nCur), mave(nCur), msig(nCur)]
+                calcUpdate = dict(zip(dictTitles,calcArray))
+                calcPush.append(pymongo.UpdateOne(doc,{'$push': calcUpdate}))
+            batch = batch + 1
+            print batch
+            histData.bulk_write(calcPush)
+            print 'push ' + str(batch) + ' complete'
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except:
+        print ('Unknown exception: calcPopulate2')
+        print (sys.exc_info())
 
 # MACD 12 period moving average
 def m12ema(n):
@@ -71,8 +97,8 @@ def m26ema(n):
 
 # MACD average indicator
 def mave(n):
-    if (m12ema == '' or m26ema == ''):
-        return ''
+    if (m12ema(n) == '' or m26ema(n) == ''):
+        return
     ave = m12ema(n) - m26ema(n)
 #    print ave
     return ave

@@ -1,7 +1,7 @@
 # Websocket access directly to Mongo database
 
 from pymongo import MongoClient
-import gdax, time, threading, sys
+import gdax, time, threading, sys, pymongo
 import Level2Data
 #from Base import quitCall
 quitCall = False
@@ -11,6 +11,7 @@ mongo_client = MongoClient()
 db = mongo_client.algodb_test
 tickercol = db.tickercol
 level2col = db.level2col
+curColl = db.level2current
 
 def initTickerDataDraw(prod, limiter):
 #   Define products and cahnnels
@@ -73,8 +74,11 @@ def initLevel2DataDraw(prod):
 #   Set function variables
     updateCount = 100
     uNum = 0
-#   Define products and cahnnels
+#   Define products and channels
     prodf = [prod]
+#   Clear database collecctions
+    curColl.drop()
+    level2col.drop()
 #   Set up websocket class to reference
     class MyWebsocketClient(gdax.WebsocketClient):
         def on_open(self):
@@ -107,40 +111,33 @@ def initLevel2DataDraw(prod):
         if(cur["type"] == "error"):
             raise Exception
 #       If successful subscription, call collection current state setup
-        ss = threading.Thread(target=Level2Data.lSnapshotSplit,args=(), name="snapshot")
         try:
-            #ss.setDaemon(True)
-            #ss.start()
             Level2Data.lSnapshotSplit()
+            curColl.create_index("price")
         except:
             print(sys.exc_info())
         print('End of snapshot breakout')
 #       Update current state collection every updateCount messages
-        lu = threading.Thread(target = Level2Data.lUpdateData,args=())
-        while True:
-#            if ss.isAlive():
-#                pass
-            if wsClient.message_count >= updateCount:
-            #and not lu.isAlive() and not ss.isAlive():
-                try:
-                    #lu.setDaemon(True)
-                    #lu.start()
+        try:
+            while True:
+                if wsClient.message_count >= updateCount:
                     Level2Data.lUpdateData(updateCount)
                     wsClient.message_count = wsClient.message_count - updateCount
-                except:
-                    print("Update " + str(uNum) + " complete")
-                    print(sys.exc_info())
-                finally:
-                    sys.exc_clear()
-                uNum = uNum + 1
-                if uNum > 1000:
-                    print("1000 loops complete (Probably broken)!!")
-                    raise Exception
-#           Check if "quit websockets" has been called
-            elif quitCall:
-                raise Exception
-            else:
                 pass
+        except:
+            print("Update " + str(uNum) + " complete")
+            print(sys.exc_info())
+        finally:
+            sys.exc_clear()
+        uNum = uNum + 1
+        if uNum > 1000:
+            print("1000 loops complete (Probably broken)!!")
+            raise Exception
+#       Check if "quit websockets" has been called
+        elif quitCall:
+            raise Exception
+        else:
+            pass
 #   Exceptions to quit try loop
     except EOFError:
         print(sys.exc_info())
