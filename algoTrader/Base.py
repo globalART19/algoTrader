@@ -3,8 +3,8 @@
 import gdax, pymongo, collections, threading, sys, os, subprocess
 import WStoMongo, Level2Data, HistData, DataFunc
 
- f = open(os.devnull, 'w')
- subprocess.Popen(['C:\\Python27\\MongoDB\\bin\\mongod'], stdout=f, stderr=f, shell=False)
+ # f = open(os.devnull, 'w')
+ # subprocess.Popen(['C:\\Python27\\MongoDB\\bin\\mongod'], stdout=f, stderr=f, shell=False)
 
 db = pymongo.MongoClient().algodb_test
 quitCall = False
@@ -35,6 +35,18 @@ while True:
             print("Error: unable to start thread")
         finally:
             sys.exc_clear()
+#   Import historical data
+    if selFile == 'uh' or selFile == 'UH':
+        print ('Historical data will be updated')
+        try:
+            uh = threading.Thread(target=HistData.updateHistory,args=())
+            uh.start()
+        except:
+            print(sys.exc_info())
+            print("Error: unable to start thread")
+        finally:
+            sys.exc_clear()
+#   Calculate indicators and push to db
     elif selFile == 'c' or selFile == 'C':
         try:
             c = threading.Thread(target = DataFunc.calcPopulateBulk, args=())

@@ -8,36 +8,13 @@ db = mongo_client.algodb_test
 histData = db.algoHistTable
 calcData = db.calcData
 
-# Slowwwwwwww. Use calcPopulateBulk().
-def calcPopulate():
-#   Set db collection titles to be added
-    dictTitles = ['m12ema','m26ema','mave','msig']
-
-    nCount = histData.count()
-    batchSize = 100
-    nCur = 0
-    nSize = 100
-    if (nCount < 100):
-        nSize = nCount - 1
-    try:
-        while (nCur <= nCount):
-            batchCursor = histData.find().sort('htime', pymongo.ASCENDING).skip(nCur).limit(batchSize)
-            for doc in batchCursor:
-                calcArray = [m12ema(nCur), m26ema(nCur), mave(nCur), msig(nCur)]
-                calcUpdate = dict(zip(dictTitles,calcArray))
-                histData.update_one(doc, {'$push': calcUpdate}, upsert = True)
-                nCur = nCur + 1
-    except (KeyboardInterrupt, SystemExit):
-        pass
-    except:
-        print ('Unknown exception: calcPopulate2')
-        print (sys.exc_info())
-
-def calcPopulateBulk():
+# Populate or update data from
+def calcPopulateBulk(nCount = -1):
 #   Set db collection titles to be added
     dictTitles = ['m12ema','m26ema','mave','msig']
     calcPush = []
-    nCount = histData.count()
+    if (nCount == -1):
+        nCount = histData.count()
     batchSize = 1000
     nCur = 0
     batch = 0
@@ -49,9 +26,7 @@ def calcPopulateBulk():
                 calcUpdate = dict(zip(dictTitles,calcArray))
                 calcPush.append(pymongo.UpdateOne(doc,{'$push': calcUpdate}))
             batch = batch + 1
-            print batch
             histData.bulk_write(calcPush)
-            print 'push ' + str(batch) + ' complete'
     except (KeyboardInterrupt, SystemExit):
         pass
     except:
@@ -109,3 +84,29 @@ def msig(n):
         return ''
     sig = mave(n-35)
     return sig
+
+
+# Slowwwwwwww. Use calcPopulateBulk().
+def calcPopulate():
+#   Set db collection titles to be added
+    dictTitles = ['m12ema','m26ema','mave','msig']
+
+    nCount = histData.count()
+    batchSize = 100
+    nCur = 0
+    nSize = 100
+    if (nCount < 100):
+        nSize = nCount - 1
+    try:
+        while (nCur <= nCount):
+            batchCursor = histData.find().sort('htime', pymongo.ASCENDING).skip(nCur).limit(batchSize)
+            for doc in batchCursor:
+                calcArray = [m12ema(nCur), m26ema(nCur), mave(nCur), msig(nCur)]
+                calcUpdate = dict(zip(dictTitles,calcArray))
+                histData.update_one(doc, {'$push': calcUpdate}, upsert = True)
+                nCur = nCur + 1
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except:
+        print ('Unknown exception: calcPopulate2')
+        print (sys.exc_info())
