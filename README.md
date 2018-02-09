@@ -2,8 +2,14 @@ Welcome to the Trahan Automated Trading platform
 
 This is not even close to complete yet, so don't try to use it.
 
+In progress:
+- calcPopulate wayyy to slow. Increase Efficiency
+- Start building authorized client trading structure
+
 To Do:
 - Start building algorithm for sandbox testing
+- popHist store missing data points to update later
+- Do not calcPopulate until popHist data set is full and complete unless skip after # attempts
 - Fix CTRL-C not quitting all loops
 - Repair "updateHist" function
 - Add proper threading threading.Event() calls
@@ -15,8 +21,11 @@ To Do:
 - Linear or polynomial regression across l2current data for analysis?
 - Remove ticker data draw to mongo? Shouldn't be needed?
 
+Latest:
+
 Completed:
 - Added basic incomplete data/spotty server handling to popHistory
+    (only missed 830/158400 on latest run!!)
 - Calcs broken. Fix it!
 - Add "updateHist" function
 - Clean up L2 notes

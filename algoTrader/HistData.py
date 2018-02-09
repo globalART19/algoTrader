@@ -132,6 +132,8 @@ def popHistory(prod, timeRange, timeInt):
                     teCursor = teCursor + dataInterval
                 else:
                     break
+        # Create algoHistTable time index
+        algoHist.create_index('htime')
     except (KeyboardInterrupt, SystemExit):
         pass
     except:

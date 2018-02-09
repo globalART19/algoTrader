@@ -12,7 +12,7 @@ quitCall = False
 print "Welcome to the Trahan Autonomous Trading Program!"
 
 while True:
-    print ('''Choose File: (h = history, w = websocket, l2 = level2 feed,
+    print ('''Choose File: (h = history, uh = update history, w = websocket, l2 = level2 feed,
            l2g = graph level 2 data, t = ticker feed, d = delete dbs, c = calc history,
            End threads (q**): ie. ql2 quit l2 thread''')
     selFile = raw_input(">>> ")
