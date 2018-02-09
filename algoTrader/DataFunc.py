@@ -30,8 +30,10 @@ def calcPopulateBulk(nCount = -1):
     except (KeyboardInterrupt, SystemExit):
         pass
     except:
-        print ('Unknown exception: calcPopulate2')
+        print ('Unknown exception: calcPopulateBulk')
         print (sys.exc_info())
+    finally:
+        print('calcPopulate complete')
 
 # MACD 12 period moving average
 def m12ema(n):

@@ -27,9 +27,6 @@ while True:
         try:
             h = threading.Thread(target = HistData.popHistory,args=(hProd, tRange, tInterval))
             h.start()
-        except EOFError:
-            sys.exc_info()
-            print('End of file')
         except:
             print(sys.exc_info())
             print("Error: unable to start thread")
@@ -130,5 +127,4 @@ while True:
 #   Handler for no match
     else:
         print 'Selection not valid'
-        raise KeyboardInterrupt
-        break
+        #break

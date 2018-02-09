@@ -55,6 +55,8 @@ def updateHistory(prod=''):
     except:
         print ('Unknown exception: updateHistory')
         print sys.exc_info()
+    finally:
+        print('updateHistory complete')
 
 
 
@@ -99,3 +101,5 @@ def popHistory(prod, timeRange, timeInt):
     except:
         print ('Unknown exception: popHistory')
         print sys.exc_info()
+    finally:
+        print('popHistory complete')
