@@ -70,6 +70,8 @@ def popHistory(prod, timeRange, timeInt):
     tEnd = float(now['epoch'])
     tStart = tEnd - timeRange * 86400
     histGranularity = timeInt * 60
+    projTot = (tEnd - tStart)/histGranularity
+    actTot = 0
 #   calc loop span
     dataInterval = 349 * histGranularity
 #   define database keys
@@ -90,27 +92,32 @@ def popHistory(prod, timeRange, timeInt):
 #           Call data from gdax and store locally
             histData = gdax.PublicClient().get_product_historic_rates(
                 prod,start=tsCursorISO,end=teCursorISO,granularity=histGranularity)
-            if (len(histData) < 340 and teCursor != tEnd):
+            if (len(histData) < 345 and teCursor != tEnd):
                 print 'Failed to complete pull. Trying again: ',tryCount
                 tryCount += 1
-                #sleep(15)
+                sleep(6)
             else:
 #           Build dictionary document and push to history collection
+                tryCount = 0
                 for i in range(0,len(histData)-1):
                     histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
                     #algoHist.insert_one(histDataDoc)
                     dataPush.append(histDataDoc)
                 algoHist.insert_many(dataPush)
+                actTot += len(dataPush)
 #               Set cursors for next loop
                 tsCursor = teCursor
                 teCursor = teCursor + dataInterval
 #           Check for last loop condition to prevent overdraw
             if teCursor > tEnd:
                 teCursor = tEnd
-            if tryCount > 20:
+            if tryCount > 10:
                 print 'HistData pull failed due to crap servers. Try again later'
-                cont = raw_input('Continue anyway? (y/n) >>> ')
-                if cont = 'y':
+                print algoHist.find_one()
+                tryCount = 0
+                #cont = raw_input('Continue anyway? (y/n) >>> ')
+                cont = 'y'
+                if cont == 'y':
                     tryCount = 0
                     for i in range(0,len(histData)-1):
                         histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
@@ -118,11 +125,13 @@ def popHistory(prod, timeRange, timeInt):
                         dataPush.append(histDataDoc)
                     if len(dataPush) > 0:
                         algoHist.insert_many(dataPush)
+                        actTot += len(dataPush)
+                        print len(dataPush), algoHist.find_one()
     #               Set cursors for next loop
                     tsCursor = teCursor
                     teCursor = teCursor + dataInterval
-            else:
-                break
+                else:
+                    break
     except (KeyboardInterrupt, SystemExit):
         pass
     except:
@@ -130,3 +139,4 @@ def popHistory(prod, timeRange, timeInt):
         print sys.exc_info()
     finally:
         print('popHistory complete')
+        print('# docs for full report vs actually pulled: ', )
