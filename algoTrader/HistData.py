@@ -3,6 +3,7 @@
 import gdax, pymongo, collections, sys
 from DataFunc import calcPopulateBulk
 from datetime import datetime
+from time import sleep
 
 #DB labeling
 db = pymongo.MongoClient().algodb_test
@@ -63,6 +64,7 @@ def updateHistory(prod=''):
 def popHistory(prod, timeRange, timeInt):
 #   drop history table on start
     algoHist.drop()
+
 #   set time range and convert inputs to seconds
     now = gdax.PublicClient().get_time()
     tEnd = float(now['epoch'])
@@ -75,27 +77,52 @@ def popHistory(prod, timeRange, timeInt):
 #   loop for data immport over time range. Start at tStart and append to db.
     try:
         tsCursor = tStart
+        tryCount = 0
         if (tEnd < tStart + dataInterval):
             teCursor = tEnd
         else:
             teCursor = tStart + dataInterval
         while (teCursor < tEnd):
+            dataPush = []
 #           Convert time cursors to iso format for GDAX API
             tsCursorISO = datetime.isoformat(datetime.utcfromtimestamp(tsCursor))
             teCursorISO = datetime.isoformat(datetime.utcfromtimestamp(teCursor))
 #           Call data from gdax and store locally
             histData = gdax.PublicClient().get_product_historic_rates(
                 prod,start=tsCursorISO,end=teCursorISO,granularity=histGranularity)
+            if (len(histData) < 340 and teCursor != tEnd):
+                print 'Failed to complete pull. Trying again: ',tryCount
+                tryCount += 1
+                #sleep(15)
+            else:
 #           Build dictionary document and push to history collection
-            for i in range(0,len(histData)-1):
-                histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
-                algoHist.insert_one(histDataDoc)
-#           Set cursors for next loop
-            tsCursor = teCursor
-            teCursor = teCursor + dataInterval
+                for i in range(0,len(histData)-1):
+                    histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
+                    #algoHist.insert_one(histDataDoc)
+                    dataPush.append(histDataDoc)
+                algoHist.insert_many(dataPush)
+#               Set cursors for next loop
+                tsCursor = teCursor
+                teCursor = teCursor + dataInterval
 #           Check for last loop condition to prevent overdraw
             if teCursor > tEnd:
                 teCursor = tEnd
+            if tryCount > 20:
+                print 'HistData pull failed due to crap servers. Try again later'
+                cont = raw_input('Continue anyway? (y/n) >>> ')
+                if cont = 'y':
+                    tryCount = 0
+                    for i in range(0,len(histData)-1):
+                        histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
+                        #algoHist.insert_one(histDataDoc)
+                        dataPush.append(histDataDoc)
+                    if len(dataPush) > 0:
+                        algoHist.insert_many(dataPush)
+    #               Set cursors for next loop
+                    tsCursor = teCursor
+                    teCursor = teCursor + dataInterval
+            else:
+                break
     except (KeyboardInterrupt, SystemExit):
         pass
     except:

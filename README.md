@@ -5,7 +5,7 @@ This is not even close to complete yet, so don't try to use it.
 To Do:
 - Start building algorithm for sandbox testing
 - Fix CTRL-C not quitting all loops
-- Add "updateHist" function
+- Repair "updateHist" function
 - Add proper threading threading.Event() calls
 - Make threads into a class
 - Fix print screen overlay to keep ">>>" at bottom
@@ -16,6 +16,9 @@ To Do:
 - Remove ticker data draw to mongo? Shouldn't be needed?
 
 Completed:
+- Added basic incomplete data/spotty server handling to popHistory
+- Calcs broken. Fix it!
+- Add "updateHist" function
 - Clean up L2 notes
 - Create proper indexes in Mongo (done for level2current)
 - Improve efficiency for lUpdateData
