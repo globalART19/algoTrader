@@ -116,7 +116,8 @@ def calcPopulateBulk2():
         while (batch <= nCount/batchSize):
             array12 = []
             array26 = []
-            array35 = []
+            #arrayAve = []
+            arraySig = []
             tEnd = tStart - tInt * batchSize
             #while (not(histData.find({'htime': tEnd}) > 0)):
             #       tEnd = tEnd - tInt
@@ -139,34 +140,47 @@ def calcPopulateBulk2():
                     break
                 except:
                     nCur = doc['htime']
-                    curPrice
+                    curPrice = doc['hclose']
                     #print 'pre calc'
-                    array12.append([nCur,curPrice])
+                    if nCur - array12[0][0] > tInt:
+                        array12 = []
+                        array26 = []
+                        arrayAve = []
+                        arraySig = []
+                    array12.insert([nCur,curPrice])
+                    array26.insert([nCur,curPrice])
+                    #arrayAve.insert([nCur,curPrice])
+                    arraySig.insert([nCur,curPrice])
                     if len(array12) == 12:
-
-                    array26.append([nCur,curPrice])
-                    array35.append([nCur,curPrice])
-
-                    m12 = m12ema(nCur,tInt,tInit)
-                    m26 = m26ema(nCur,tInt,tInit)
-                    try:
-                        ave = m12 - m26
-                    except:
-                        ave = None
-                        sys.exc_clear()
-                    calcArray = [m12, m26, ave, msig(nCur,tInt,tInit)]
-                    #print 'calced'
+                        m12 = m12ema(array12)
+                        del array12[-1]
+                    else:
+                        m12 = None
+                    if len(array26) == 26:
+                        m26 = m26ema(array26)
+                        mA = m12 - m26
+                        del array26[-1]
+                        #del arrayAve[-1]
+                    else:
+                        m26 = None
+                        mA = None
+                    if len(array35) == 35:
+                        mS = msig(arraySig)
+                        del arraySig[-1]
+                    else:
+                        mS = None
+                    array12[0].append(m12)
+                    array26[0].append(m26)
+                    arrayAve[0].append(mA)
+                    arraySig[0].append(mS)
+                    calcArray = [m12, m26, mA, mS]
                     calcUpdate = dict(zip(dictTitles,calcArray))
                     calcPush.append(pymongo.UpdateOne(doc,{'$set': calcUpdate}))
-                    #nCur = nCur + 1
-                    nCur += tInt
-                    #print (nCur - tStart)/tInt
+                    nCur -= tInt
                     sys.exc_clear()
-            #print 'pre push'
-            if (len(calcPush)>0):
-                histData.bulk_write(calcPush)
+            histData.bulk_write(calcPush)
             tStart = tEnd
-            print batch
+            print batch + ' complete!'
             batch += 1
     except (KeyboardInterrupt, SystemExit):
         pass
@@ -180,16 +194,15 @@ def calcPopulateBulk2():
 
 # MACD 12 period moving average
 def m12ema(dataArray):
-    curSum = 0
-    first = dataArray[0]
-#    print new
-#    print first
-    for doc in new:
-#        print doc
-        curVal = float(doc['hclose'])
-        curSum = curSum + curVal
-    firstVal = float(first['hclose'])
-    ema = (2 * firstVal + curSum) / 13
+    try:
+        lastM12 = dataArray[1][2]
+        ema = dataArray[0][1] * 2/13 + lastM12 * 11/13
+    except:
+        curSum = 0
+        for item in range(1,len(dataArray)-1):
+            curSum = curSum + item[1]
+        ema = dataArray[0][1] * 2/13 + curSum * 11/13
+        sys.exc_clear()
     return ema
 #
 # # MACD 12 period moving average
@@ -251,12 +264,12 @@ def m12ema(dataArray):
 #     return ema
 
 # MACD average indicator
-def mave(n,m12='a',m26='a'):
-    if m12 == 'a':
-        m12 = m12ema(n)
-    if m26 == 'a':
-        m26 = m26ema(n)
-    return (m12 - m26)
+# def mave(n,m12='a',m26='a'):
+#     if m12 == 'a':
+#         m12 = m12ema(n)
+#     if m26 == 'a':
+#         m26 = m26ema(n)
+#     return (m12 - m26)
 
 # MACD signal 9 period moving average indicator
 def msig(n,interval,init,m12='a',m26='a'):
