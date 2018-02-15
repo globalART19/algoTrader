@@ -3,6 +3,7 @@ Welcome to the Trahan Automated Trading platform
 This is not even close to complete yet, so don't try to use it.
 
 In progress:
+- calculations are iterating backwards. Flip iteration and reduce data draw.
 - calcPopulate wayyy to slow. Increase Efficiency
 - Start building authorized client trading structure
 
