@@ -3,8 +3,7 @@
 import pymongo, sys
 import gdax
 
-mongo_client = pymongo.MongoClient()
-db = mongo_client.algodb_test
+db = pymongo.MongoClient().algodb_test
 histData = db.algoHistTable
 calcData = db.calcData
 
@@ -21,6 +20,78 @@ def deleteCalcs():
         print (sys.exc_info())
         print('deleteCalcs complete')
 
+# # Populate or update data from
+# def calcPopulateBulk():
+# #   Set db collection titles to be added
+#     dictTitles = ['m12ema','m26ema','mave','msig']
+#     calcPush = []
+# #    if (nCount == -1):
+#     nCount = histData.count()
+#     batchSize = 1000
+#     intData = histData.find().sort({'htime': pymongo.DESCENDING}).limit(2)
+#     tInt = []
+#     for doc in intData:
+#         tInt.append(doc['htime'])
+#     tStart = tInit = tInt[0]
+#     tInt = tInt[0] - tInt[1]
+#     #nCur = 0
+#     nCur = tStart
+#     batch = 1
+#     try:
+#         while (batch <= nCount/batchSize):
+#             tEnd = tStart - tInt * batchSize
+#             while (not(histData.find_one({'htime': tEnd}) > 0)):
+#                    tEnd = tEnd - tInt
+#             #batchCursor = histData.find().sort('htime', pymongo.ASCENDING).skip(nCur).limit(batchSize)
+#             if tStart == tInit:
+#                 batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}})
+#             else:
+#                 batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}})
+#                 while(batchCursor.count() < 70):
+#                     tEnd = tEnd + tInt
+#                     batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}})
+#             for doc in batchCursor:
+#                 try:
+#                     test = doc['m12ema']
+#                     #nCur = nCur + 1
+#                     nCur += tInt
+#                 except KeyboardInterrupt:
+#                     sys.exc_info()
+#                     sys.exc_clear()
+#                     break
+#                 except:
+#                     nCur = doc['htime']
+#                     #print 'pre calc'
+#                     m12 = m12ema(nCur,tInt,tInit)
+#                     m26 = m26ema(nCur,tInt,tInit)
+#                     try:
+#                         ave = m12 - m26
+#                     except:
+#                         ave = None
+#                         sys.exc_clear()
+#                     calcArray = [m12, m26, ave, msig(nCur,tInt,tInit)]
+#                     #print 'calced'
+#                     calcUpdate = dict(zip(dictTitles,calcArray))
+#                     calcPush.append(pymongo.UpdateOne(doc,{'$set': calcUpdate}))
+#                     #nCur = nCur + 1
+#                     nCur += tInt
+#                     #print (nCur - tStart)/tInt
+#                     sys.exc_clear()
+#             #print 'pre push'
+#             if (len(calcPush)>0):
+#                 histData.bulk_write(calcPush)
+#             tStart = tEnd
+#             print batch
+#             batch += 1
+#     except (KeyboardInterrupt, SystemExit):
+#         pass
+#     except:
+#         print ('Unknown exception: calcPopulateBulk')
+#         print (sys.exc_info())
+#     finally:
+#         print (sys.exc_info())
+#         print('calcPopulate complete')
+
 # Populate or update data from
 def calcPopulateBulk():
 #   Set db collection titles to be added
@@ -29,115 +100,56 @@ def calcPopulateBulk():
 #    if (nCount == -1):
     nCount = histData.count()
     batchSize = 1000
-    intData = histData.find().sort({'htime': pymongo.DESCENDING}).limit(2)
+    intData = histData.find().sort('htime', pymongo.ASCENDING).limit(2)
     tInt = []
     for doc in intData:
         tInt.append(doc['htime'])
-    tStart = tInit = tInt[0]
-    tInt = tInt[0] - tInt[1]
-    #nCur = 0
-    nCur = tStart
-    batch = 1
-    try:
-        while (batch <= nCount/batchSize):
-            tEnd = tStart - tInt * batchSize
-            while (not(histData.find_one({'htime': tEnd}) > 0)):
-                   tEnd = tEnd - tInt
-            #batchCursor = histData.find().sort('htime', pymongo.ASCENDING).skip(nCur).limit(batchSize)
-            if tStart == tInit:
-                batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}})
-            else:
-                batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}})
-                while(batchCursor.count() < 70):
-                    tEnd = tEnd + tInt
-                    batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}})
-            for doc in batchCursor:
-                try:
-                    test = doc['m12ema']
-                    #nCur = nCur + 1
-                    nCur += tInt
-                except KeyboardInterrupt:
-                    sys.exc_info()
-                    sys.exc_clear()
-                    break
-                except:
-                    nCur = doc['htime']
-                    #print 'pre calc'
-                    m12 = m12ema(nCur,tInt,tInit)
-                    m26 = m26ema(nCur,tInt,tInit)
-                    try:
-                        ave = m12 - m26
-                    except:
-                        ave = None
-                        sys.exc_clear()
-                    calcArray = [m12, m26, ave, msig(nCur,tInt,tInit)]
-                    #print 'calced'
-                    calcUpdate = dict(zip(dictTitles,calcArray))
-                    calcPush.append(pymongo.UpdateOne(doc,{'$set': calcUpdate}))
-                    #nCur = nCur + 1
-                    nCur += tInt
-                    #print (nCur - tStart)/tInt
-                    sys.exc_clear()
-            #print 'pre push'
-            if (len(calcPush)>0):
-                histData.bulk_write(calcPush)
-            tStart = tEnd
-            print batch
-            batch += 1
-    except (KeyboardInterrupt, SystemExit):
-        pass
-    except:
-        print ('Unknown exception: calcPopulateBulk')
-        print (sys.exc_info())
-    finally:
-        print (sys.exc_info())
-        print('calcPopulate complete')
-
-# Populate or update data from
-def calcPopulateBulk2():
-#   Set db collection titles to be added
-    dictTitles = ['m12ema','m26ema','mave','msig']
-    calcPush = []
-#    if (nCount == -1):
-    nCount = histData.count()
-    batchSize = 1000
-    intData = histData.find().sort({'htime': pymongo.ASCENDING}).limit(2)
-    tInt = []
-    for doc in intData:
-        tInt.append(doc['htime'])
-    tInit = tInt[0]
-    tInt = tInt[0] - tInt[1]
-    init = histData.find().sort({'htime': pymongo.DESCENDING}).limit(1)
+    tOldest = tInt[0]
+    tInt = abs(tInt[1] - tInt[0])
+    print tInt
+    init = histData.find().sort('htime', pymongo.DESCENDING).limit(1)
     for doc in init:
         tStart = doc['htime']
     nCur = tStart
-    batch = 1
+    # batch = 1
+    print 'calc initialized'
     try:
-        while (batch <= nCount/batchSize):
-            updateMarker = 0
-            array12 = []
+        while (nCur >= tOldest):
+            # loopNum = 1
+            # updateMarker = 0
+            array12 = [[0]]
             array26 = []
             arrayAve = []
             #arraySig = []
             tEnd = tStart - tInt * batchSize
-            batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}}).sort({'htime': pymongo.DESCENDING})
-            while(batchCursor.count() < 700):
+            print tEnd
+            batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}}).sort('htime', pymongo.DESCENDING)
+            bcCount = batchCursor.count()
+            while(bcCount < 700):
                 tEnd = tEnd - 300 * tInt
-                batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}}).sort({'htime': pymongo.DESCENDING})
+                print batch, tEnd
+                batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}}).sort('htime', pymongo.DESCENDING)
+                bcCount = batchCursor.count()
+                if tEnd <= tOldest:
+                    tEnd = tOldest
+                    bcCount = 1000
+            # print 'batch ' + str(batch) + ' set up. starting for loop'
             for doc in batchCursor:
                 try:
                     test = doc['mave']
+                    #print 'try 1 pass'
                     nCur -= tInt
-                    if updateMarker == 0:
-                        array12 = [0] * 11
-                        array26 = [0] * 25
-                        arrayAve = [0] * 34
-                        updateMarker = 1
+                    # if (updateMarker == 0 and test != None):
+                    #     print 'update'
+                    #     array12 = [0] * 11
+                    #     array26 = [0] * 25
+                    #     arrayAve = [0] * 34
+                    #     updateMarker = 1
                 except KeyboardInterrupt:
                     sys.exc_info()
                     sys.exc_clear()
                     break
-                except:
+                except KeyError:
                     nCur = doc['htime']
                     curPrice = doc['hclose']
                     if nCur - array12[0][0] > tInt:
@@ -145,23 +157,26 @@ def calcPopulateBulk2():
                         array26 = []
                         arrayAve = []
                         #arraySig = []
-                    array12.insert([nCur,curPrice])
-                    array26.insert([nCur,curPrice])
-                    arrayAve.insert([nCur,curPrice])
+                    array12.insert(0,[nCur,curPrice])
+                    array26.insert(0,[nCur,curPrice])
+                    arrayAve.insert(0,[nCur,curPrice])
                     #arraySig.insert([nCur,curPrice])
-                    if updateMarker == 1:
-                        prevEntry = histData.find_one({'htime': (doc['htime'] + tInt)})
-                        array12[0].append(prevEntry['m12ema'])
-                        array26[0].append(prevEntry['m26ema'])
-                        arrayAve[0].append(prevEntry['mave'])
-                        #arraySig[0].append(prevEntry['msig'])
-                        updateMarker = 0
+                    # if updateMarker == 1:
+                    #     print 'update'
+                    #     prevEntry = histData.find_one({'htime': (nCur + tInt)})
+                    #     array12[0].append(prevEntry['m12ema'])
+                    #     array26[0].append(prevEntry['m26ema'])
+                    #     arrayAve[0].append(prevEntry['mave'])
+                    #     #arraySig[0].append(prevEntry['msig'])
+                    #     updateMarker = 0
                     if len(array12) == 12:
+                        #print 'm12'
                         m12 = m12ema(array12)
                         del array12[-1]
                     else:
                         m12 = None
                     if len(array26) == 26:
+                        #print 'm26'
                         m26 = m26ema(array26)
                         mA = m12 - m26
                         del array26[-1]
@@ -169,29 +184,35 @@ def calcPopulateBulk2():
                     else:
                         m26 = None
                         mA = None
-                    if len(array35) == 35:
-                        mS = msig(arrayAve)
-                        del arrayAve[-1]
-                    else:
-                        mS = None
                     array12[0].append(m12)
                     array26[0].append(m26)
                     arrayAve[0].append(mA)
                     #arraySig[0].append(mS)
+                    if len(arrayAve) == 36:
+                        #print 'mS'
+                        mS = msig(arrayAve)
+                        del arrayAve[-1]
+                    else:
+                        mS = None
                     calcArray = [m12, m26, mA, mS]
                     calcUpdate = dict(zip(dictTitles,calcArray))
                     calcPush.append(pymongo.UpdateOne(doc,{'$set': calcUpdate}))
                     nCur -= tInt
                     sys.exc_clear()
+                # finally:
+                #     print loopNum
+                #     loopNum += 1
+            # print 'pre-batch push'
             histData.bulk_write(calcPush)
+            calcPush = []
             tStart = tEnd
-            print batch + ' complete!'
-            batch += 1
+            # print 'batch ' + str(batch) + ' complete!'
+            # batch += 1
     except (KeyboardInterrupt, SystemExit):
         pass
-    except:
-        print ('Unknown exception: calcPopulateBulk')
-        print (sys.exc_info())
+    # except:
+    #     print ('Unknown exception: calcPopulateBulk')
+    #     print (sys.exc_info())
     finally:
         print (sys.exc_info())
         print('calcPopulate complete')
@@ -199,45 +220,40 @@ def calcPopulateBulk2():
 
 # MACD 12 period moving average
 def m12ema(dataArray):
-    try:
-        lastM12 = dataArray[1][2]
+    lastM12 = dataArray[1][2]
+    if lastM12 != None:
         ema = dataArray[0][1] * 2/13 + lastM12 * 11/13
-    except:
+    else:
         curSum = 0
-        for item in range(1,len(dataArray)):
-            curSum = curSum + item[1]
-        ema = dataArray[0][1] * 2/13 + curSum * 11/13
-        sys.exc_clear()
+        for i in range(1,len(dataArray)):
+            curSum = curSum + dataArray[i][1]
+        ema = dataArray[0][1] * 2/13 + curSum / 13
     return ema
 
 
 # MACD 26 period moving average
 def m26ema(dataArray):
-    try:
-        lastM26 = dataArray[1][2]
-        ema = dataArray[0][1] * 2/13 + lastM26 * 11/13
-    except:
+    lastM26 = dataArray[1][2]
+    if lastM26 != None:
+        ema = dataArray[0][1] * 2/27 + lastM26 * 25/27
+    else:
         curSum = 0
-        for item in range(1,len(dataArray)):
-            curSum = curSum + item[1]
-        ema = dataArray[0][1] * 2/27 + curSum * 11/27
-        sys.exc_clear()
-    finally:
-        return ema
+        for i in range(1,len(dataArray)):
+            curSum = curSum + dataArray[i][1]
+        ema = dataArray[0][1] * 2/27 + curSum / 27
+    return ema
 
 # MACD signal 9 period moving average indicator
 def msig(dataArray):
     maveSum = 0
-    try:
-        lastMAve = dataArray[1][2]
-        mS = dataArray[0][1] * 2/10 + lastMAve * 8/10
-    except:
-        for item in range(1,len(dataArray)):
-            curSum = curSum + item[1]
-        mS = dataArray[0][1] * 2/27 + curSum * 11/27
-        sys.exc_clear()
-    finally:
-        return mS
+    lastMAve = dataArray[1][2]
+    if lastMAve != None:
+        mS = dataArray[0][2] * 2/10 + lastMAve * 8/10
+    else:
+        for i in range(1,len(dataArray)):
+            curSum = curSum + dataArray[i][2]
+        mS = dataArray[0][2] * 2/10 + curSum / 10
+    return mS
 
 
 # # Slowwwwwwww. Use calcPopulateBulk().

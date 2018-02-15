@@ -3,8 +3,6 @@ Welcome to the Trahan Automated Trading platform
 This is not even close to complete yet, so don't try to use it.
 
 In progress:
-- calculations are iterating backwards. Flip iteration and reduce data draw.
-- calcPopulate wayyy to slow. Increase Efficiency
 - Start building authorized client trading structure
 
 To Do:
@@ -25,6 +23,8 @@ To Do:
 Latest:
 
 Completed:
+- calculations are iterating backwards. Flip iteration and reduce data draw.
+- calcPopulate wayyy to slow. Increase Efficiency
 - Added basic incomplete data/spotty server handling to popHistory
     (only missed 830/158400 on latest run!!)
 - Calcs broken. Fix it!
