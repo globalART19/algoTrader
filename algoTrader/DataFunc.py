@@ -28,40 +28,46 @@ def calcPopulateBulk():
 #    if (nCount == -1):
     nCount = histData.count()
     batchSize = 1000
-    intData = histData.find().sort('htime', pymongo.ASCENDING).limit(2)
+    intData = histData.find().sort('htime', pymongo.DESCENDING).limit(2)
     tInt = []
     for doc in intData:
         tInt.append(doc['htime'])
-    tOldest = tInt[0]
+    tNewest = tInt[0]
     tInt = abs(tInt[1] - tInt[0])
     print tInt
-    init = histData.find().sort('htime', pymongo.DESCENDING).limit(1)
+    init = histData.find().sort('htime', pymongo.ASCENDING).limit(1)
     for doc in init:
         tStart = doc['htime']
     nCur = tStart
     batch = 1
+    trigger = 0
+    dataArray = [[0]]
     print 'calc initialized'
     try:
-        while (nCur >= tOldest):
+        while (trigger != 1):
             # loopNum = 1
             # updateMarker = 0
             # array12 = [[0]]
             # array26 = []
             # arrayAve = []
-            dataArray = [[0]]
             #arraySig = []
-            tEnd = tStart - tInt * batchSize
+            tEnd = tStart + tInt * batchSize
             # print tEnd
-            batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}}).sort('htime', pymongo.DESCENDING)
+            batchCursor = histData.find({'htime': {'$gte': tStart, '$lte': tEnd}}).sort('htime', pymongo.ASCENDING)
             bcCount = batchCursor.count()
+            if tEnd >= tNewest:
+                tEnd = tNewest
+                bcCount = 1000
+                trigger = 1
             while(bcCount < 700):
-                tEnd = tEnd - 300 * tInt
-                print '<700 datapoints', batch, tEnd
-                batchCursor = histData.find({'htime': {'$gte': tEnd, '$lte': tStart}}).sort('htime', pymongo.DESCENDING)
+                tEnd = tEnd + 300 * tInt
+                # print '<700 datapoints', batch, tEnd # -----------------------------------------------------------------------
+                batchCursor = histData.find({'htime': {'$gte': tStart, '$lte': tEnd}}).sort('htime', pymongo.ASCENDING)
                 bcCount = batchCursor.count()
-                if tEnd <= tOldest:
-                    tEnd = tOldest
+                if tEnd >= tNewest:
+                    tEnd = tNewest
                     bcCount = 1000
+                    trigger = 1
             # print 'batch ' + str(batch) + ' set up. starting for loop'
             for doc in batchCursor:
                 try:
@@ -90,6 +96,9 @@ def calcPopulateBulk():
                     # array26.insert(0,[nCur,curPrice])
                     # arrayAve.insert(0,[nCur,curPrice])
                     if nCur - dataArray[0][0] > tInt:
+                        # print 'reset at: ', nCur, dataArray[0][0] #-----------------------
+                        # if dataArray[0][0] == 0: # ---------------------------------------
+                        #     print dataArray # --------------------------------------------
                         dataArray = []
                     dataArray.insert(0,[nCur,curPrice])
                     arrLength = len(dataArray)
@@ -99,7 +108,9 @@ def calcPopulateBulk():
                         mA = m12 - m26
                         dataArray[0].extend([m12, m26, mA])
                         mS = msig(dataArray)
+                        rsi = rsiFunc(dataArray)
                         dataArray[0].extend([mS, rsi])
+                        del dataArray[-1]
                     elif arrLength >= 26:
                         m12 = m12ema(dataArray)
                         m26 = m26ema(dataArray)
@@ -122,6 +133,7 @@ def calcPopulateBulk():
                         rsi = None
                         dataArray[0].extend([m12, m26, mA, mS, rsi])
                     else:
+                        # print 'dataArray len: ', len(dataArray) # -----------------------
                         m12 = None
                         m26 = None
                         mA = None
@@ -173,7 +185,7 @@ def calcPopulateBulk():
             # print 'pre-batch push'
             histData.bulk_write(calcPush)
             calcPush = []
-            tStart = tEnd
+            tStart = tEnd + tInt
             # print 'batch ' + str(batch) + ' complete!'
             batch += 1
     except (KeyboardInterrupt, SystemExit):
@@ -225,29 +237,31 @@ def msig(dataArray):
 
 # Relative Strength indicator
 def rsiFunc(dataArray):
-    gain = 0
+    gain = 0.0
     numGain = 0
-    loss = 0
+    loss = 0.0
     numLoss = 0
-    curPrice = dataArray[14][1]
-    for i in range(13, -1, -1):
+    curPrice = dataArray[0][1]
+    for i in range(1,15):
         lastPrice = curPrice
         curPrice = dataArray[i][1]
         glValue = curPrice - lastPrice
         if glValue >= 0:
             gain += glValue
             numGain += 1
+            # print 'gain: ', gain, numGain
         else:
             loss += glValue
             numLoss += 1
+            # print 'loss: ', loss, numLoss
     if numGain == 0:
-        numGain = 1
-        print 'gain: ' + str(gain)
+        # print 'gain: ', gain, dataArray[0][0] # -----------------------------------------
         return 0
     if numLoss == 0:
-        print 'loss: ' + str(loss)
+        # print 'loss: ', loss, dataArray[0][0] # -----------------------------------------
         return 100
     rsi = 100 - 100/(1+(gain/numGain)/(abs(loss)/numLoss))
+    # print gain, numGain, loss, numLoss, (gain/numGain)/(abs(loss)/numLoss)
     return rsi
 
 def cGraph():
@@ -274,7 +288,7 @@ def cGraph():
 #                 n = 1
 #             pass
 #       calculate bid side data and create y-axis points
-    for doc in histData.find().sort('htime',pymongo.ASCENDING):
+    for doc in histData.find({'htime': {'$gte': 1515000000}}).sort('htime',pymongo.ASCENDING):
         time.append(doc['htime'])
         price.append(doc['hclose'])
         m12.append(doc['m12ema'])
@@ -294,61 +308,67 @@ def cGraph():
         x = time,
         y = price,
         name = 'price',
+        # mode = 'lines+markers',
         line = dict(color = ('rgb(0,0,0)'), width = 3)
     )
     traceM12 = go.Scatter(
         x = time,
         y = m12,
         name = 'm12ema',
-        line = dict(color = ('rgb(255,0,0)'), width = 3, dash = 'dash')
+        line = dict(color = ('rgb(255,0,0)'), width = 2, dash = 'dash')
     )
     traceM26 = go.Scatter(
         x = time,
         y = m26,
         name = 'm26ema',
-        line = dict(color = ('rgb(255,127,0)'), width = 3, dash = 'dot')
+        line = dict(color = ('rgb(255,127,0)'), width = 2, dash = 'dot')
     )
     traceMAVE = go.Scatter(
         x = time,
         y = mave,
         name = 'mAve',
         yaxis = 'y2',
-        line = dict(color = ('rgb(0,255,0)'), width = 3)
+        line = dict(color = ('rgb(0,255,0)'), width = 2)
     )
     traceMSIG = go.Scatter(
         x = time,
         y = msig,
         name = 'mSig',
         yaxis = 'y2',
-        line = dict(color = ('rgb(0,0,255)'), width = 3, dash = 'dash')
+        line = dict(color = ('rgb(0,0,255)'), width = 2, dash = 'dash')
     )
     traceRSI = go.Scatter(
         x = time,
         y = rsi,
         name = 'RSI',
-        line = dict(color = ('rgb(255,0,255)'), width = 3)
+        yaxis = 'y3',
+        line = dict(color = ('rgb(255,0,255)'), width = 1)
     )
-    graph1 = [tracePrice, traceM12, traceM26]
-    graph2 = [traceMAVE, traceMSIG]
-    graph3 = [traceRSI]
-    graph4 = [tracePrice, traceM12, traceM26, traceMAVE, traceMSIG]
-    layout1 = dict(title = 'Calculated data over time',
-                  xaxis = dict(title = 'Time (s since epoch)'),
-                  yaxis = dict(title = 'Price ($)'))
-    layout2 = dict(title = 'Calculated data over time',
-                  xaxis = dict(title = 'Time (s since epoch)'),
-                  yaxis = dict(title = 'MACD Average/Signal 9'))
-    layout3 = dict(title = 'Calculated data over time',
-                  xaxis = dict(title = 'Time (s since epoch)'),
-                  yaxis = dict(title = 'RSI Index'))
+    # graph1 = [tracePrice, traceM12, traceM26]
+    # graph2 = [traceMAVE, traceMSIG]
+    # graph3 = [traceRSI]
+    graph4 = [traceRSI, traceMSIG, traceMAVE, traceM26, traceM12, tracePrice]
+    # layout1 = dict(title = 'Calculated data over time',
+    #               xaxis = dict(title = 'Time (s since epoch)'),
+    #               yaxis = dict(title = 'Price ($)'))
+    # layout2 = dict(title = 'Calculated data over time',
+    #               xaxis = dict(title = 'Time (s since epoch)'),
+    #               yaxis = dict(title = 'MACD Average/Signal 9'))
+    # layout3 = dict(title = 'Calculated data over time',
+    #               xaxis = dict(title = 'Time (s since epoch)'),
+    #               yaxis = dict(title = 'RSI Index'))
     layout4 = dict(title = 'Calculated data over time',
-                  xaxis = dict(title = 'Time (s since epoch)'),
+                  xaxis = dict(title = 'Time (s since epoch)', domain=[0,.95]),
                   yaxis = dict(title = 'Price ($)'),
                   yaxis2 = dict(title = 'MACD Average/Signal 9',
+                                anchor='x',
                                 overlaying='y',
-                                side='right'))
-    data1 = graph1.extend(graph2)
-    # fig1 = go.Figure(data = data1, layout = layout4)
+                                side='right'),
+                  yaxis3 = dict(title = 'Relative Strength Index',
+                                anchor='free',
+                                side='right',
+                                overlaying='y',
+                                position = 1))
     # po.plot(dict(data = graph1, layout = layout1), filename = 'm12m26Graph')
     # po.plot(dict(data = graph2, layout = layout2), filename = 'mavemsigGraph')
     # po.plot(dict(data = graph3, layout = layout3), filename = 'rsiGraph')

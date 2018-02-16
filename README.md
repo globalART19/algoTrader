@@ -4,9 +4,10 @@ This is not even close to complete yet, so don't try to use it.
 
 In progress:
 - Start building authorized client trading structure
+- calculation graph x-axis to NOT seconds
 
 To Do:
-- Add calculation graph
+- Add proper notes to code for clarity
 - Start building algorithm for sandbox testing
 - popHist store missing data points to update later
 - Do not calcPopulate until popHist data set is full and complete unless skip after # attempts
@@ -23,6 +24,9 @@ To Do:
 Latest:
 
 Completed:
+- Repaired RSI indicator.
+- Fixed minor calcPopulateBulk bug
+- Add calculation graph
 - Add RSI calculation.
 - calculations are iterating backwards. Flip iteration and reduce data draw.
 - Improve efficiency for calcPopulate
