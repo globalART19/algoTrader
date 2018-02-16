@@ -1,11 +1,11 @@
 # Holds all data manipulation and calculation functions
 
-import pymongo, sys
-import gdax
+import pymongo, sys, gdax
+import plotly.offline as po
+import plotly.graph_objs as go
 
 db = pymongo.MongoClient().algodb_test
 histData = db.algoHistTable
-calcData = db.calcData
 
 # Delete all current calculations to allow repopulate
 def deleteCalcs():
@@ -249,3 +249,114 @@ def rsiFunc(dataArray):
         return 100
     rsi = 100 - 100/(1+(gain/numGain)/(abs(loss)/numLoss))
     return rsi
+
+def cGraph():
+    # tickerPrice = float(gdax.PublicClient().get_product_ticker(product_id='BTC-USD')['price'])
+    # vBidTot = 0
+    # vAskTot = 0
+    time = []
+    price = []
+    m12 = []
+    m26 = []
+    mave = []
+    msig = []
+    rsi = []
+    # n = 0
+    # try:
+#       Check if l2data is present
+    if("algoHistTable" not in db.collection_names()):
+        print('Historical data does not exist. Quitting...')
+        raise Exception
+# #       Check if current state is currently processing and wait for completion
+#         while ("snapshot" in threading.enumerate()):
+#             if(n == 0):
+#                 print('Level2 data collection in process, waiting for completion')
+#                 n = 1
+#             pass
+#       calculate bid side data and create y-axis points
+    for doc in histData.find().sort('htime',pymongo.ASCENDING):
+        time.append(doc['htime'])
+        price.append(doc['hclose'])
+        m12.append(doc['m12ema'])
+        m26.append(doc['m26ema'])
+        mave.append(doc['mave'])
+        msig.append(doc['msig'])
+        rsi.append(doc['rsi'])
+# #       calculate ask side data and append to y-axis points and store x-axis points
+#         for doc in curColl.find().sort('price',pymongo.ASCENDING):
+#             if tickerPrice - priceRange < doc['price'] <= tickerPrice + priceRange:
+#                 x.append(doc['price'])
+#             if tickerPrice < doc['price'] < tickerPrice + priceRange:
+#                 vAskTot = vAskTot + doc['volume']
+#                 y.append(vAskTot)
+#       plot graph with title and axis labels
+    tracePrice = go.Scatter(
+        x = time,
+        y = price,
+        name = 'price',
+        line = dict(color = ('rgb(0,0,0)'), width = 3)
+    )
+    traceM12 = go.Scatter(
+        x = time,
+        y = m12,
+        name = 'm12ema',
+        line = dict(color = ('rgb(255,0,0)'), width = 3, dash = 'dash')
+    )
+    traceM26 = go.Scatter(
+        x = time,
+        y = m26,
+        name = 'm26ema',
+        line = dict(color = ('rgb(255,127,0)'), width = 3, dash = 'dot')
+    )
+    traceMAVE = go.Scatter(
+        x = time,
+        y = mave,
+        name = 'mAve',
+        yaxis = 'y2',
+        line = dict(color = ('rgb(0,255,0)'), width = 3)
+    )
+    traceMSIG = go.Scatter(
+        x = time,
+        y = msig,
+        name = 'mSig',
+        yaxis = 'y2',
+        line = dict(color = ('rgb(0,0,255)'), width = 3, dash = 'dash')
+    )
+    traceRSI = go.Scatter(
+        x = time,
+        y = rsi,
+        name = 'RSI',
+        line = dict(color = ('rgb(255,0,255)'), width = 3)
+    )
+    graph1 = [tracePrice, traceM12, traceM26]
+    graph2 = [traceMAVE, traceMSIG]
+    graph3 = [traceRSI]
+    graph4 = [tracePrice, traceM12, traceM26, traceMAVE, traceMSIG]
+    layout1 = dict(title = 'Calculated data over time',
+                  xaxis = dict(title = 'Time (s since epoch)'),
+                  yaxis = dict(title = 'Price ($)'))
+    layout2 = dict(title = 'Calculated data over time',
+                  xaxis = dict(title = 'Time (s since epoch)'),
+                  yaxis = dict(title = 'MACD Average/Signal 9'))
+    layout3 = dict(title = 'Calculated data over time',
+                  xaxis = dict(title = 'Time (s since epoch)'),
+                  yaxis = dict(title = 'RSI Index'))
+    layout4 = dict(title = 'Calculated data over time',
+                  xaxis = dict(title = 'Time (s since epoch)'),
+                  yaxis = dict(title = 'Price ($)'),
+                  yaxis2 = dict(title = 'MACD Average/Signal 9',
+                                overlaying='y',
+                                side='right'))
+    data1 = graph1.extend(graph2)
+    # fig1 = go.Figure(data = data1, layout = layout4)
+    # po.plot(dict(data = graph1, layout = layout1), filename = 'm12m26Graph')
+    # po.plot(dict(data = graph2, layout = layout2), filename = 'mavemsigGraph')
+    # po.plot(dict(data = graph3, layout = layout3), filename = 'rsiGraph')
+    po.plot(dict(data = graph4, layout = layout4))
+    # except (KeyboardInterrupt, SystemExit):
+    #     pass
+    # except:
+    #     print ('Unknown exception: l2Graph')
+    #     print sys.exc_info()
+    # finally:
+    #     sys.exc_clear()

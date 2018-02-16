@@ -6,6 +6,7 @@ In progress:
 - Start building authorized client trading structure
 
 To Do:
+- Add calculation graph
 - Start building algorithm for sandbox testing
 - popHist store missing data points to update later
 - Do not calcPopulate until popHist data set is full and complete unless skip after # attempts
@@ -16,7 +17,6 @@ To Do:
 - Fix print screen overlay to keep ">>>" at bottom
 - Build basic UI (HTML/CSS)
 - Create proper indexes in Mongo to increase efficiency
-- Improve efficiency for calcPopulate
 - Linear or polynomial regression across l2current data for analysis?
 - Remove ticker data draw to mongo? Shouldn't be needed?
 
@@ -25,6 +25,7 @@ Latest:
 Completed:
 - Add RSI calculation.
 - calculations are iterating backwards. Flip iteration and reduce data draw.
+- Improve efficiency for calcPopulate
 - calcPopulate wayyy to slow. Increase Efficiency
 - Added basic incomplete data/spotty server handling to popHistory
     (only missed 830/158400 on latest run!!)
