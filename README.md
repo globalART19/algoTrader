@@ -23,6 +23,7 @@ To Do:
 Latest:
 
 Completed:
+- Add RSI calculation.
 - calculations are iterating backwards. Flip iteration and reduce data draw.
 - calcPopulate wayyy to slow. Increase Efficiency
 - Added basic incomplete data/spotty server handling to popHistory
