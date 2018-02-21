@@ -4,7 +4,7 @@ This is not even close to complete yet, so don't try to use it.
 
 In progress:
 - Start building authorized client trading structure
-- Start building algorithm for sandbox testing
+- Finish building algorithm
 - Repair "updateHist" function
 
 To Do:
@@ -19,10 +19,12 @@ To Do:
 - Remove ticker data draw to mongo? Shouldn't be needed?
 
 Latest:
-- Add proper notes to code for clarity
+- Start building algorithm for sandbox testing
+- Build sandbox client for algorithm testing
 
 Completed:
 - Calculation graph x-axis to NOT seconds
+- Add proper notes to code for clarity
 - Repaired RSI indicator.
 - Fixed minor calcPopulateBulk bug
 - Add calculation graph
