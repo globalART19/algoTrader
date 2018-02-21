@@ -3,6 +3,7 @@
 from pymongo import MongoClient
 import gdax, time, threading, sys, pymongo
 import Level2Data
+
 #from Base import quitCall
 quitCall = False
 
@@ -155,6 +156,7 @@ def initLevel2DataDraw(prod):
     print('Level2 data draw complete')
 
 
+# Not needed anymore? Delete? ++++++++++++++++
 # Draw data for specified products and channels
 def initDataDraw():
     # State format for data draw
@@ -208,8 +210,3 @@ def initDataDraw():
 
     wsClient.close()
     print 'data draw complete'
-
-    # cur = BTC_collection.find().sort([('sequence', -1)]).limit(1)
-    # print cur
-    # for doc in cur:
-    #     print doc

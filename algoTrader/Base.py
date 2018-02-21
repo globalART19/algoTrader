@@ -3,18 +3,17 @@
 import gdax, pymongo, collections, threading, sys, os, subprocess
 import WStoMongo, Level2Data, HistData, DataFunc
 
- # f = open(os.devnull, 'w')
- # subprocess.Popen(['C:\\Python27\\MongoDB\\bin\\mongod'], stdout=f, stderr=f, shell=False)
-
 db = pymongo.MongoClient().algodb_test
 quitCall = False
 
 print "Welcome to the Trahan Autonomous Trading Program!"
 
+# Main program loop to start threads for various information gathering and testing purposes.
 while True:
+    # Main input instructions
     print ('''Choose File: (h = history, uh = update history, w = websocket, l2 = level2 feed,
            l2g = graph level 2 data, t = ticker feed, d = delete dbs, c = calc history,
-           End threads (q**): ie. ql2 quit l2 thread''')
+           cd = delete calculations, at == test algorithm, End threads (q**): ie. ql2 quit l2 thread''')
     selFile = raw_input(">>> ")
 
 #   Import historical data
@@ -32,7 +31,7 @@ while True:
             print("Error: unable to start thread")
         finally:
             sys.exc_clear()
-#   Import historical data
+    # Import historical data
     if selFile == 'uh' or selFile == 'UH':
         print ('Historical data will be updated')
         try:
@@ -43,7 +42,17 @@ while True:
             print("Error: unable to start thread")
         finally:
             sys.exc_clear()
-#   Calculate indicators and push to db
+    # Run algorithm over historical data
+    elif selFile == 'at' or selFile == 'AT':
+        try:
+            at = threading.Thread(target = AuthClient.testAlgorithm(), args=())
+            at.start()
+        except:
+            print(sys.exc_info())
+            print("Error: unable to start thread")
+        finally:
+            sys.exc_clear()
+    # Calculate indicators and push to db
     elif selFile == 'c' or selFile == 'C':
         try:
             c = threading.Thread(target = DataFunc.calcPopulateBulk, args=())
@@ -53,7 +62,17 @@ while True:
             print("Error: unable to start thread")
         finally:
             sys.exc_clear()
-#   Clear database
+    # Delete indicator calculations from historical data
+    elif selFile == 'cd' or selFile == 'CD':
+        try:
+            cd = threading.Thread(target = DataFunc.deleteCalcs, args=())
+            cd.start()
+        except:
+            print(sys.exc_info())
+            print("Error: unable to start thread")
+        finally:
+            sys.exc_clear()
+    # Clear database
     elif selFile == 'd' or selFile == 'D':
         db.algoHistTable.drop()
         db.algoWebsocketTable.drop()
@@ -61,11 +80,10 @@ while True:
         db.level2col.drop()
         db.tickercol.drop()
         db.level2current.drop()
-
         print ('Collections cleared: \n   algoHistTable \n'
               '   algoWebsocketTable \n   algoWStest \n   level2col \n'
               '   level2current \n   tickercol ')
-#   Start generic feed data draw
+    # Start generic feed data draw
     elif selFile == 'w' or selFile == 'W':
         try:
             w = threading.Thread(target = WStoMongo.initDataDraw,args=())
@@ -126,5 +144,5 @@ while True:
         quitCall = True
 #   Handler for no match
     else:
-        print 'Selection not valid'
+        print 'Selection not valid (CTRL-C to quit!)'
         #break

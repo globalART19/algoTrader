@@ -94,41 +94,38 @@ def lSnapshotSplit():
 
 # Graph level2 snapshot of order book (from current state l2 data)
 def lGraph(priceRange):
-#   store latest ticker price
-#    tickerCur = tickerFeed.find().sort('sequence',pymongo.DESCENDING).limit(1)
-#    tickerList = list(tickerCur)
-#    tickerPrice = float(tickerList[0]['price'])
-#   define required variables
-    tickerPrice = float(gdax.PublicClient().get_product_ticker(product_id='BTC-USD')['price'])
+    # define required variables
     vBidTot = 0
     vAskTot = 0
     x = []
     y = []
     n = 0
+    # Store latest ticker price
+    tickerPrice = float(gdax.PublicClient().get_product_ticker(product_id='BTC-USD')['price'])
     try:
-#       Check if l2data is present
+        # Check if l2data is present
         if("level2current" not in db.collection_names()):
             print('Level2 data does not exist. Quitting...')
             raise Exception
-#       Check if current state is currently processing and wait for completion
+        # Check if current state is currently processing and wait for completion
         while ("snapshot" in threading.enumerate()):
             if(n == 0):
                 print('Level2 data collection in process, waiting for completion')
                 n = 1
             pass
-#       calculate bid side data and create y-axis points
+        # calculate bid side data and create y-axis points
         for doc in curColl.find().sort('price',pymongo.DESCENDING):
             if tickerPrice - priceRange < doc['price'] <= tickerPrice:
                 vBidTot = vBidTot + doc['volume']
                 y.insert(0, vBidTot)
-#       calculate ask side data and append to y-axis points and store x-axis points
+        # calculate ask side data and append to y-axis points and store x-axis points
         for doc in curColl.find().sort('price',pymongo.ASCENDING):
             if tickerPrice - priceRange < doc['price'] <= tickerPrice + priceRange:
                 x.append(doc['price'])
             if tickerPrice < doc['price'] < tickerPrice + priceRange:
                 vAskTot = vAskTot + doc['volume']
                 y.append(vAskTot)
-#       plot graph with title and axis labels
+        # plot graph with title and axis labels
         plotly.offline.plot({"data": [Scatter(x=x,y=y)],
                          "layout": Layout(title="Open Trades Volume Chart<br>Cur Price: "+str(tickerPrice),
                                           xaxis=dict(title=('Price (USD/BTC)')),

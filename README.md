@@ -4,15 +4,12 @@ This is not even close to complete yet, so don't try to use it.
 
 In progress:
 - Start building authorized client trading structure
-- calculation graph x-axis to NOT seconds
+- Start building algorithm for sandbox testing
+- Repair "updateHist" function
 
 To Do:
-- Add proper notes to code for clarity
-- Start building algorithm for sandbox testing
 - popHist store missing data points to update later
-- Do not calcPopulate until popHist data set is full and complete unless skip after # attempts
 - Fix CTRL-C not quitting all loops
-- Repair "updateHist" function
 - Add proper threading threading.Event() calls
 - Make threads into a class
 - Fix print screen overlay to keep ">>>" at bottom
@@ -22,8 +19,10 @@ To Do:
 - Remove ticker data draw to mongo? Shouldn't be needed?
 
 Latest:
+- Add proper notes to code for clarity
 
 Completed:
+- Calculation graph x-axis to NOT seconds
 - Repaired RSI indicator.
 - Fixed minor calcPopulateBulk bug
 - Add calculation graph

@@ -1,6 +1,6 @@
 # Holds all data manipulation and calculation functions
 
-import pymongo, sys, gdax
+import pymongo, sys, gdax, time, datetime
 import plotly.offline as po
 import plotly.graph_objs as go
 
@@ -20,88 +20,80 @@ def deleteCalcs():
         print (sys.exc_info())
         print('deleteCalcs complete')
 
-# Populate or update data from
+# Populate or update indicator calculations from historical data.
+# Loop runs from the oldest datapoint to the newest datapoint.
 def calcPopulateBulk():
-#   Set db collection titles to be added
+    # Set db collection titles to be added
     dictTitles = ['m12ema', 'm26ema', 'mave', 'msig', 'rsi']
+    # Initialize variables
     calcPush = []
-#    if (nCount == -1):
+    batch = 1
+    quitTrigger = 0
+    dataArray = [[0]]
     nCount = histData.count()
+    # Set size of batch to be pushed to mongo database
     batchSize = 1000
+    # Find most recent db entries and use them to determine the time interval
     intData = histData.find().sort('htime', pymongo.DESCENDING).limit(2)
     tInt = []
     for doc in intData:
         tInt.append(doc['htime'])
     tNewest = tInt[0]
     tInt = abs(tInt[1] - tInt[0])
-    print tInt
+    # print tInt #----------------------------------------------------------------------
+    # Find and store earliest historical datapoint
     init = histData.find().sort('htime', pymongo.ASCENDING).limit(1)
     for doc in init:
         tStart = doc['htime']
     nCur = tStart
-    batch = 1
-    trigger = 0
-    dataArray = [[0]]
     print 'calc initialized'
     try:
-        while (trigger != 1):
-            # loopNum = 1
-            # updateMarker = 0
-            # array12 = [[0]]
-            # array26 = []
-            # arrayAve = []
-            #arraySig = []
+        # Loop over historical dataset until last entry (quitTrigger) submitted.
+        while (quitTrigger != 1):
+            # Determine last entry time for current batch
             tEnd = tStart + tInt * batchSize
-            # print tEnd
+            # print tEnd # ------------------------------------------------------------
             batchCursor = histData.find({'htime': {'$gte': tStart, '$lte': tEnd}}).sort('htime', pymongo.ASCENDING)
             bcCount = batchCursor.count()
+            # Signal to quit loop if last entry is pulled. Set batch as full
             if tEnd >= tNewest:
                 tEnd = tNewest
-                bcCount = 1000
-                trigger = 1
-            while(bcCount < 700):
-                tEnd = tEnd + 300 * tInt
+                bcCount = batchSize
+                quitTrigger = 1
+            # Count the size of the batch pull. If too small, add more entries until large enough to justify run. +++++++++
+            while(bcCount < batchSize * .7):
+                tEnd = tEnd + batchSize * .3 * tInt
                 # print '<700 datapoints', batch, tEnd # -----------------------------------------------------------------------
                 batchCursor = histData.find({'htime': {'$gte': tStart, '$lte': tEnd}}).sort('htime', pymongo.ASCENDING)
                 bcCount = batchCursor.count()
+                # Signal to quit loop if last entry is pulled.
                 if tEnd >= tNewest:
                     tEnd = tNewest
-                    bcCount = 1000
-                    trigger = 1
-            # print 'batch ' + str(batch) + ' set up. starting for loop'
+                    bcCount = batchSize
+                    quitTrigger = 1
+            # print 'batch ' + str(batch) + ' set up. starting for loop' # ---------------------------------------
+            # Loop over documents in batch. Run calculations. Build batch data to push to db.
             for doc in batchCursor:
+                # Test is calculations already exist. If they do, skip to next entry.
                 try:
                     test = doc['mave']
-                    #print 'try 1 pass'
+                    # print 'try 1 pass' # ------------------------------------------
                     nCur -= tInt
-                    # if (updateMarker == 0 and test != None):
-                    #     print 'update'
-                    #     array12 = [0] * 11
-                    #     array26 = [0] * 25
-                    #     arrayAve = [0] * 34
-                    #     updateMarker = 1
                 except KeyboardInterrupt:
                     sys.exc_info()
                     sys.exc_clear()
                     break
+                # If calcs do not exist, run calculations.
                 except KeyError:
                     nCur = doc['htime']
                     curPrice = doc['hclose']
-                    # if nCur - array12[0][0] > tInt:
-                    #     array12 = []
-                    #     array26 = []
-                    #     arrayAve = []
-                    #     #arraySig = []
-                    # array12.insert(0,[nCur,curPrice])
-                    # array26.insert(0,[nCur,curPrice])
-                    # arrayAve.insert(0,[nCur,curPrice])
+                    # If the data skips an entry, clear calculation data storage and restart. Prevents averaging over missing data points.
                     if nCur - dataArray[0][0] > tInt:
-                        # print 'reset at: ', nCur, dataArray[0][0] #-----------------------
-                        # if dataArray[0][0] == 0: # ---------------------------------------
-                        #     print dataArray # --------------------------------------------
                         dataArray = []
+                    # Insert data into the calculation data array
                     dataArray.insert(0,[nCur,curPrice])
                     arrLength = len(dataArray)
+                    # Determine which indicators to calculate based on how many data points exist (dataArray size) and store them in the data array
                     if arrLength >= 35:
                         m12 = m12ema(dataArray)
                         m26 = m26ema(dataArray)
@@ -110,6 +102,7 @@ def calcPopulateBulk():
                         mS = msig(dataArray)
                         rsi = rsiFunc(dataArray)
                         dataArray[0].extend([mS, rsi])
+                        # Remove oldest (unneeded) data point to prevent size creep
                         del dataArray[-1]
                     elif arrLength >= 26:
                         m12 = m12ema(dataArray)
@@ -133,55 +126,19 @@ def calcPopulateBulk():
                         rsi = None
                         dataArray[0].extend([m12, m26, mA, mS, rsi])
                     else:
-                        # print 'dataArray len: ', len(dataArray) # -----------------------
                         m12 = None
                         m26 = None
                         mA = None
                         mS = None
                         rsi = None
                         dataArray[0].extend([m12, m26, mA, mS, rsi])
-                    #arraySig.insert([nCur,curPrice])
-                    # if updateMarker == 1:
-                    #     print 'update'
-                    #     prevEntry = histData.find_one({'htime': (nCur + tInt)})
-                    #     array12[0].append(prevEntry['m12ema'])
-                    #     array26[0].append(prevEntry['m26ema'])
-                    #     arrayAve[0].append(prevEntry['mave'])
-                    #     #arraySig[0].append(prevEntry['msig'])
-                    #     updateMarker = 0
-                    # if len(array12) == 12:
-                    #     #print 'm12'
-                    #     m12 = m12ema(array12)
-                    #     del array12[-1]
-                    # else:
-                    #     m12 = None
-                    # if len(array26) == 26:
-                    #     #print 'm26'
-                    #     m26 = m26ema(array26)
-                    #     mA = m12 - m26
-                    #     del array26[-1]
-                    #     #del arrayAve[-1]
-                    # else:
-                    #     m26 = None
-                    #     mA = None
-                    # array12[0].append(m12)
-                    # array26[0].append(m26)
-                    # arrayAve[0].append(mA)
-                    # #arraySig[0].append(mS)
-                    # if len(arrayAve) == 36:
-                    #     #print 'mS'
-                    #     mS = msig(arrayAve)
-                    #     del arrayAve[-1]
-                    # else:
-                    #     mS = None
+                    # Create array/dict to be pushed to database
                     calcArray = [m12, m26, mA, mS, rsi]
                     calcUpdate = dict(zip(dictTitles,calcArray))
+                    # Append push command to bulk push command
                     calcPush.append(pymongo.UpdateOne(doc,{'$set': calcUpdate}))
                     nCur -= tInt
                     sys.exc_clear()
-                # finally:
-                #     print loopNum
-                #     loopNum += 1
             # print 'pre-batch push'
             histData.bulk_write(calcPush)
             calcPush = []
@@ -201,8 +158,10 @@ def calcPopulateBulk():
 # MACD 12 period moving average
 def m12ema(dataArray):
     lastM12 = dataArray[1][2]
+    # If previous tic has M12 data, calculate simply.
     if lastM12 != None:
         ema = dataArray[0][1] * 2/13 + lastM12 * 11/13
+    # Else average over previous stored datapoints.
     else:
         curSum = 0
         for i in range(1,12):
@@ -214,8 +173,10 @@ def m12ema(dataArray):
 # MACD 26 period moving average
 def m26ema(dataArray):
     lastM26 = dataArray[1][3]
+    # If previous tic has M26 data, calculate simply.
     if lastM26 != None:
         ema = dataArray[0][1] * 2/27 + lastM26 * 25/27
+    # Else average over previous stored datapoints.
     else:
         curSum = 0
         for i in range(1,26):
@@ -226,22 +187,26 @@ def m26ema(dataArray):
 # MACD signal 9 period moving average indicator
 def msig(dataArray):
     maveSum = 0
+    # If previous tic has MAve data, calculate simply.
     lastMAve = dataArray[1][4]
     if lastMAve != None:
         mS = dataArray[0][4] * 2/10 + lastMAve * 8/10
+    # Else average over previous stored datapoints.
     else:
         for i in range(1,10):
             curSum = curSum + dataArray[i][4]
         mS = dataArray[0][2] * 2/10 + curSum / 10
     return mS
 
-# Relative Strength indicator
+# Relative Strength Indicator - SMA version, less accurate? Switch to SMMA?
 def rsiFunc(dataArray):
+    # Initialize variables as proper data types
     gain = 0.0
     numGain = 0
     loss = 0.0
     numLoss = 0
     curPrice = dataArray[0][1]
+    # Calculate gain/loss between current/previous price and total gains and losses
     for i in range(1,15):
         lastPrice = curPrice
         curPrice = dataArray[i][1]
@@ -249,105 +214,93 @@ def rsiFunc(dataArray):
         if glValue >= 0:
             gain += glValue
             numGain += 1
-            # print 'gain: ', gain, numGain
+            # print 'gain: ', gain, numGain # -----------------------------------------
         else:
             loss += glValue
             numLoss += 1
-            # print 'loss: ', loss, numLoss
+            # print 'loss: ', loss, numLoss # ------------------------------------------
+    # Handle edge cases
     if numGain == 0:
         # print 'gain: ', gain, dataArray[0][0] # -----------------------------------------
         return 0
     if numLoss == 0:
         # print 'loss: ', loss, dataArray[0][0] # -----------------------------------------
         return 100
+    # Calculate RSI
     rsi = 100 - 100/(1+(gain/numGain)/(abs(loss)/numLoss))
     # print gain, numGain, loss, numLoss, (gain/numGain)/(abs(loss)/numLoss)
     return rsi
 
-def cGraph():
-    # tickerPrice = float(gdax.PublicClient().get_product_ticker(product_id='BTC-USD')['price'])
-    # vBidTot = 0
-    # vAskTot = 0
-    time = []
+# Print combined graph of price and indicators to visualize what is happening.
+def cGraph(tStart = 1515000000):
+    # Initialize variables
+    dTime = []
     price = []
     m12 = []
     m26 = []
     mave = []
     msig = []
     rsi = []
-    # n = 0
-    # try:
-#       Check if l2data is present
+    # Handle data missing
     if("algoHistTable" not in db.collection_names()):
         print('Historical data does not exist. Quitting...')
         raise Exception
-# #       Check if current state is currently processing and wait for completion
-#         while ("snapshot" in threading.enumerate()):
-#             if(n == 0):
-#                 print('Level2 data collection in process, waiting for completion')
-#                 n = 1
-#             pass
-#       calculate bid side data and create y-axis points
-    for doc in histData.find({'htime': {'$gte': 1515000000}}).sort('htime',pymongo.ASCENDING):
-        time.append(doc['htime'])
+    # Build datasets for graph
+    for doc in histData.find({'htime': {'$gte': tStart}}).sort('htime',pymongo.ASCENDING):
+        dTime.append(datetime.datetime.fromtimestamp(doc['htime']))
         price.append(doc['hclose'])
         m12.append(doc['m12ema'])
         m26.append(doc['m26ema'])
         mave.append(doc['mave'])
         msig.append(doc['msig'])
         rsi.append(doc['rsi'])
-# #       calculate ask side data and append to y-axis points and store x-axis points
-#         for doc in curColl.find().sort('price',pymongo.ASCENDING):
-#             if tickerPrice - priceRange < doc['price'] <= tickerPrice + priceRange:
-#                 x.append(doc['price'])
-#             if tickerPrice < doc['price'] < tickerPrice + priceRange:
-#                 vAskTot = vAskTot + doc['volume']
-#                 y.append(vAskTot)
-#       plot graph with title and axis labels
+    # Set up each trace data points, label, and style
     tracePrice = go.Scatter(
-        x = time,
+        x = dTime,
         y = price,
         name = 'price',
         # mode = 'lines+markers',
         line = dict(color = ('rgb(0,0,0)'), width = 3)
     )
     traceM12 = go.Scatter(
-        x = time,
+        x = dTime,
         y = m12,
         name = 'm12ema',
         line = dict(color = ('rgb(255,0,0)'), width = 2, dash = 'dash')
     )
     traceM26 = go.Scatter(
-        x = time,
+        x = dTime,
         y = m26,
         name = 'm26ema',
         line = dict(color = ('rgb(255,127,0)'), width = 2, dash = 'dot')
     )
     traceMAVE = go.Scatter(
-        x = time,
+        x = dTime,
         y = mave,
         name = 'mAve',
         yaxis = 'y2',
         line = dict(color = ('rgb(0,255,0)'), width = 2)
     )
     traceMSIG = go.Scatter(
-        x = time,
+        x = dTime,
         y = msig,
         name = 'mSig',
         yaxis = 'y2',
         line = dict(color = ('rgb(0,0,255)'), width = 2, dash = 'dash')
     )
     traceRSI = go.Scatter(
-        x = time,
+        x = dTime,
         y = rsi,
         name = 'RSI',
         yaxis = 'y3',
         line = dict(color = ('rgb(255,0,255)'), width = 1)
     )
+    # Set graph traces to be included in (each) graph
     # graph1 = [tracePrice, traceM12, traceM26]
     # graph2 = [traceMAVE, traceMSIG]
     # graph3 = [traceRSI]
     graph4 = [traceRSI, traceMSIG, traceMAVE, traceM26, traceM12, tracePrice]
+    # Set up layout for graphs
     # layout1 = dict(title = 'Calculated data over time',
     #               xaxis = dict(title = 'Time (s since epoch)'),
     #               yaxis = dict(title = 'Price ($)'))
@@ -358,7 +311,7 @@ def cGraph():
     #               xaxis = dict(title = 'Time (s since epoch)'),
     #               yaxis = dict(title = 'RSI Index'))
     layout4 = dict(title = 'Calculated data over time',
-                  xaxis = dict(title = 'Time (s since epoch)', domain=[0,.95]),
+                  xaxis = dict(title = 'Time (s since epoch)', domain=[0,.95], type="date"),
                   yaxis = dict(title = 'Price ($)'),
                   yaxis2 = dict(title = 'MACD Average/Signal 9',
                                 anchor='x',
@@ -369,6 +322,7 @@ def cGraph():
                                 side='right',
                                 overlaying='y',
                                 position = 1))
+    # plot graphs
     # po.plot(dict(data = graph1, layout = layout1), filename = 'm12m26Graph')
     # po.plot(dict(data = graph2, layout = layout2), filename = 'mavemsigGraph')
     # po.plot(dict(data = graph3, layout = layout3), filename = 'rsiGraph')
