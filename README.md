@@ -3,11 +3,13 @@ Welcome to the Trahan Automated Trading platform
 This is not even close to complete yet, so don't try to use it.
 
 In progress:
-- Start building authorized client trading structure
-- Finish building algorithm
 - Repair "updateHist" function
 
 To Do:
+- Create algorithm that funcitons for new/incoming data.
+- Determine best way to reference new/current data pulls.
+  * Have incoming data draws push to the history db collection?
+- Start building authorized client trading structure
 - popHist store missing data points to update later
 - Fix CTRL-C not quitting all loops
 - Add proper threading threading.Event() calls
@@ -19,10 +21,13 @@ To Do:
 - Remove ticker data draw to mongo? Shouldn't be needed?
 
 Latest:
-- Start building algorithm for sandbox testing
-- Build sandbox client for algorithm testing
+- Build authorized client trading testing structure
+- Finish building algorithm
+- Updated graph to show buy/sell points
 
 Completed:
+- Start building algorithm for sandbox testing
+- Build sandbox client for algorithm testing
 - Calculation graph x-axis to NOT seconds
 - Add proper notes to code for clarity
 - Repaired RSI indicator.

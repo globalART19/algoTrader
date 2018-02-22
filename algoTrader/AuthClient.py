@@ -15,16 +15,32 @@ def authClient(sOrR, key, b64secret, passphrase):
     auth_client = gdax.AuthenticatedClient(key, b64secret, passphrase,
                                   api_url=apiurl)
 
+# Remove previous test data
+def deleteTests():
+    try:
+        histData.update({}, {'$unset': {'action': 1, 'qty': 1, 'netChange': 1, 'plusMinus': 1}}, multi=True)
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except:
+        print ('Unknown exception: deleteTests')
+        print (sys.exc_info())
+    finally:
+        print (sys.exc_info())
+        print('deleteTests complete')
+
 # Store buy in dataset
 def testBuy(doc, qty):
     histData.update_one({'htime': doc['htime']},{'$set':{'action': 'buy', 'qty': qty}})
+    # print 'buy: ' + str(doc['htime'])
 
 # Store sell in dataset
 def testSell(doc, net, plusMinus):
     histData.update_one({'htime': doc['htime']},{'$set':{'action': 'sell', 'netChange': net, 'plusMinus': plusMinus}})
+    # print 'sell: ' + str(doc['htime'])
 
 def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
     data = []
+    algoData = []
     priceBuy = 0
     plusMinus = 0
     totGain = 0
@@ -32,14 +48,22 @@ def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
     numGain = 0
     numLoss = 0
     state = 'out'
+    curBalance = startBalance
     if tEnd == 0:
-        tEnd = histData.find().sort({'htime': pymongo.DESCENDING}).limit(1)
+        tEnd = histData.find().sort('htime', pymongo.DESCENDING).limit(1)
         for doc in tEnd:
             tEnd = doc['htime']
-    histData.find({'htime': {'$gte': tStart, '$lte': tEnd}}).sort({'htime': pymongo.ASCENDING})
-    for doc in cursor:
-        tradeCondition = algorithm(doc, state)
-        if tradeCondition == 'buy' and state = 'out':
+    dataCursor = histData.find({'htime': {'$gte': tStart, '$lte': tEnd}}).sort('htime', pymongo.ASCENDING)
+    for doc in dataCursor:
+        result = algorithm(doc, state, algoData)
+        try:
+            tradeCondition = result[0]
+            # print result
+            algoData = result[1]
+        except TypeError:
+            tradeCondition = None
+            sys.exc_clear()
+        if tradeCondition == 'buy' and state == 'out':
             state = 'in'
             priceBuy = doc['hclose']
             qty = curBalance / priceBuy
@@ -47,25 +71,27 @@ def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
         if tradeCondition == 'sell' and state == 'in':
             state = 'out'
             priceSell = doc['hclose']
+            curBalance = qty * priceSell
             net = qty * (priceSell - priceBuy)
             plusMinus = plusMinus + net
             testSell(doc, net, plusMinus)
+        # print 'buy/sell checked'
     netGain = plusMinus
-    mgDoc = histData.find({'action': 'sell'}).sort(pymongo.DESCENDING).limit(1)
+    mgDoc = histData.find({'action': 'sell'}).sort('netChange',pymongo.DESCENDING).limit(1)
     for doc in mgDoc:
         maxGain = doc['netChange']
-    mlDoc = histData.find({'action': 'sell'}).sort(pymongo.ASCENDING).limit(1)
+    mlDoc = histData.find({'action': 'sell'}).sort('netChange',pymongo.ASCENDING).limit(1)
     for doc in mlDoc:
         maxLoss = doc['netChange']
-    tradesCursor = histData.find{'action': 'sell'}
+    tradesCursor = histData.find({'action': 'sell'})
     for doc in tradesCursor:
         netChange = doc['netChange']
         if netChange >= 0:
             totGain = totGain + netChange
-            numGain++
+            numGain += 1
         else:
             totLoss = totLoss + netChange
-            numLoss++
+            numLoss += 1
     if numGain == 0:
         numGain = 1
     if numLoss == 0:

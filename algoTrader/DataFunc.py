@@ -14,7 +14,7 @@ def deleteCalcs():
     except (KeyboardInterrupt, SystemExit):
         pass
     except:
-        print ('Unknown exception: calcPopulateBulk')
+        print ('Unknown exception: deleteCalcs')
         print (sys.exc_info())
     finally:
         print (sys.exc_info())
@@ -241,6 +241,10 @@ def cGraph(tStart = 1515000000):
     mave = []
     msig = []
     rsi = []
+    tradesBuyTime = []
+    tradesBuy = []
+    tradesSellTime = []
+    tradesSell = []
     # Handle data missing
     if("algoHistTable" not in db.collection_names()):
         print('Historical data does not exist. Quitting...')
@@ -254,6 +258,15 @@ def cGraph(tStart = 1515000000):
         mave.append(doc['mave'])
         msig.append(doc['msig'])
         rsi.append(doc['rsi'])
+        try:
+            if doc['action'] == 'buy':
+                tradesBuy.append(doc['hclose'])
+                tradesBuyTime.append(datetime.datetime.fromtimestamp(doc['htime']))
+            if doc['action'] == 'sell':
+                tradesSell.append(doc['hclose'])
+                tradesSellTime.append(datetime.datetime.fromtimestamp(doc['htime']))
+        except:
+            sys.exc_clear()
     # Set up each trace data points, label, and style
     tracePrice = go.Scatter(
         x = dTime,
@@ -295,11 +308,25 @@ def cGraph(tStart = 1515000000):
         yaxis = 'y3',
         line = dict(color = ('rgb(255,0,255)'), width = 1)
     )
+    traceBuy = go.Scatter(
+        x = tradesBuyTime,
+        y = tradesBuy,
+        name = 'Buys',
+        mode = 'markers',
+        marker = dict(symbol = 'triangle-up', size = 20, color = ('rgb(0,127,0)'))
+    )
+    traceSell = go.Scatter(
+        x = tradesSellTime,
+        y = tradesSell,
+        name = 'Sells',
+        mode = 'markers',
+        marker = dict(symbol = 'triangle-down', size = 20, color = ('rgb(127,0,0)'))
+    )
     # Set graph traces to be included in (each) graph
     # graph1 = [tracePrice, traceM12, traceM26]
     # graph2 = [traceMAVE, traceMSIG]
     # graph3 = [traceRSI]
-    graph4 = [traceRSI, traceMSIG, traceMAVE, traceM26, traceM12, tracePrice]
+    graph4 = [traceRSI, traceMSIG, traceMAVE, traceM26, traceM12, tracePrice, traceBuy, traceSell]
     # Set up layout for graphs
     # layout1 = dict(title = 'Calculated data over time',
     #               xaxis = dict(title = 'Time (s since epoch)'),
