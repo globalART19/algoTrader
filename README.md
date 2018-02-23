@@ -1,9 +1,12 @@
 Welcome to the Trahan Automated Trading platform
 
-This is not even close to complete yet, so don't try to use it.
+This is not even close to complete yet, so don't try to use it. Getting closer now!
+
+Best,
+Andrew
 
 In progress:
-- Repair "updateHist" function
+
 
 To Do:
 - Create algorithm that funcitons for new/incoming data.
@@ -21,11 +24,12 @@ To Do:
 - Remove ticker data draw to mongo? Shouldn't be needed?
 
 Latest:
+- Repair "updateHist" function
+
+Completed:
 - Build authorized client trading testing structure
 - Finish building algorithm
 - Updated graph to show buy/sell points
-
-Completed:
 - Start building algorithm for sandbox testing
 - Build sandbox client for algorithm testing
 - Calculation graph x-axis to NOT seconds
@@ -51,6 +55,3 @@ Completed:
 - Update HistData to loop over selected time range
 - Add initial error handling to l2Graph()
 - Level 2 works!
-
-Best,
-Andrew

@@ -7,20 +7,27 @@ from time import sleep
 
 #DB labeling
 db = pymongo.MongoClient().algodb_test
-algoHist = db.algoHistTable
+algoHist = db.algoHistTable2
 
-def updateHistory(prod=''):
+def updateHistory(prod='BTC-USD'):
 #   Determine latest data time. Set time range and end points.
     last = algoHist.find().sort('htime',pymongo.DESCENDING).limit(2)
+    # print last
     j = 0
-    for i in last:
+    for doc in last:
+        # print 'doc', doc
+        # print 'j', j
         if (j == 0):
-            tStart = float(i['htime'])
+            # print doc['htime']
+            tStart = float(doc['htime'])
+            # print 'tStart: ', tStart
         else:
-            histGranularity = tStart - float(i['htime'])
+            histGranularity = tStart - float(doc['htime'])
+            print histGranularity
         j += 1
     tEnd = float(gdax.PublicClient().get_time()['epoch'])
-    print tEnd, tStart
+    print (tEnd - tStart)/histGranularity
+    actTot = 0
 #   calc loop spans
     dataInterval = 349 * histGranularity
     updateQty = (tEnd-tStart)/histGranularity
@@ -29,35 +36,70 @@ def updateHistory(prod=''):
 #   loop for data immport over time range. Start at tStart and append to db.
     try:
         tsCursor = tStart
+        tryCount = 0
         if (tEnd < tStart + dataInterval):
             teCursor = tEnd
         else:
             teCursor = tStart + dataInterval
         while (teCursor < tEnd):
+            dataPush = []
 #           Convert time cursors to iso format for GDAX API
             tsCursorISO = datetime.isoformat(datetime.utcfromtimestamp(tsCursor))
             teCursorISO = datetime.isoformat(datetime.utcfromtimestamp(teCursor))
 #           Call data from gdax and store locally
             histData = gdax.PublicClient().get_product_historic_rates(
                 prod,start=tsCursorISO,end=teCursorISO,granularity=histGranularity)
+            if (len(histData) < 345 and teCursor != tEnd):
+                print 'Failed to complete pull. Trying again: ',tryCount
+                tryCount += 1
+                sleep(6)
+            else:
 #           Build dictionary document and push to history collection
-            for i in range(0,len(histData)-1):
-                histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
-                algoHist.insert_one(histDataDoc)
-#           Set cursors for next loop
-            tsCursor = teCursor
-            teCursor = teCursor + dataInterval
+                tryCount = 0
+                for i in range(0,len(histData)-1):
+                    histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
+                    #algoHist.insert_one(histDataDoc)
+                    dataPush.append(histDataDoc)
+                algoHist.insert_many(dataPush)
+                actTot += len(dataPush)
+#               Set cursors for next loop
+                tsCursor = teCursor
+                teCursor = teCursor + dataInterval
 #           Check for last loop condition to prevent overdraw
             if teCursor > tEnd:
                 teCursor = tEnd
-        calcPopulateBulk(updateQty)
+            if tryCount > 2:
+                print 'HistData pull failed due to crap servers. Try again later'
+                print algoHist.find_one()
+                tryCount = 0
+                cont = raw_input('Continue anyway? (y/n) >>> ')
+                # cont = 'y' # ------------------------------------------------------------------
+                if cont == 'y':
+                    tryCount = 0
+                    for i in range(0,len(histData)-1):
+                        histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
+                        #algoHist.insert_one(histDataDoc)
+                        dataPush.append(histDataDoc)
+                    if len(dataPush) > 0:
+                        algoHist.insert_many(dataPush)
+                        actTot += len(dataPush)
+                        # print len(dataPush), algoHist.find_one()
+    #               Set cursors for next loop
+                    tsCursor = teCursor
+                    teCursor = teCursor + dataInterval
+                    print tsCursor,  teCursor
+                else:
+                    break
+        # Create algoHistTable time index
+        algoHist.create_index('htime')
     except (KeyboardInterrupt, SystemExit):
         pass
     except:
-        print ('Unknown exception: updateHistory')
+        print ('Unknown exception: popHistory')
         print sys.exc_info()
     finally:
         print('updateHistory complete')
+        print('# docs for full report vs actually pulled: ', actTot, updateQty)
 
 
 
@@ -116,7 +158,7 @@ def popHistory(prod, timeRange, timeInt):
                 print algoHist.find_one()
                 tryCount = 0
                 #cont = raw_input('Continue anyway? (y/n) >>> ')
-                cont = 'y'
+                cont = 'y' # ------------------------------------------------------------------
                 if cont == 'y':
                     tryCount = 0
                     for i in range(0,len(histData)-1):
@@ -141,4 +183,4 @@ def popHistory(prod, timeRange, timeInt):
         print sys.exc_info()
     finally:
         print('popHistory complete')
-        print('# docs for full report vs actually pulled: ', )
+        print('# docs for full report vs actually pulled: ', actTot, projTot)

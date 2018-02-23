@@ -31,12 +31,12 @@ def deleteTests():
 # Store buy in dataset
 def testBuy(doc, qty):
     histData.update_one({'htime': doc['htime']},{'$set':{'action': 'buy', 'qty': qty}})
-    # print 'buy: ' + str(doc['htime'])
+    # print 'buy: ' + str(doc['htime']) # -------------------------------------------------------------
 
 # Store sell in dataset
 def testSell(doc, net, plusMinus):
     histData.update_one({'htime': doc['htime']},{'$set':{'action': 'sell', 'netChange': net, 'plusMinus': plusMinus}})
-    # print 'sell: ' + str(doc['htime'])
+    # print 'sell: ' + str(doc['htime']) # -------------------------------------------------------------
 
 def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
     data = []
@@ -58,7 +58,7 @@ def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
         result = algorithm(doc, state, algoData)
         try:
             tradeCondition = result[0]
-            # print result
+            # print result # -------------------------------------------------------------
             algoData = result[1]
         except TypeError:
             tradeCondition = None
@@ -75,7 +75,7 @@ def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
             net = qty * (priceSell - priceBuy)
             plusMinus = plusMinus + net
             testSell(doc, net, plusMinus)
-        # print 'buy/sell checked'
+        # print 'buy/sell checked'  # -------------------------------------------------------------
     netGain = plusMinus
     mgDoc = histData.find({'action': 'sell'}).sort('netChange',pymongo.DESCENDING).limit(1)
     for doc in mgDoc:
