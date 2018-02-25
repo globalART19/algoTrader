@@ -29,13 +29,13 @@ def deleteTests():
         print('deleteTests complete')
 
 # Store buy in dataset
-def testBuy(doc, qty):
-    histData.update_one({'htime': doc['htime']},{'$set':{'action': 'buy', 'qty': qty}})
+def testBuy(doc, qty, reason):
+    histData.update_one({'htime': doc['htime']},{'$set':{'action': 'buy', 'qty': qty, 'reason': reason}})
     # print 'buy: ' + str(doc['htime']) # -------------------------------------------------------------
 
 # Store sell in dataset
-def testSell(doc, net, plusMinus):
-    histData.update_one({'htime': doc['htime']},{'$set':{'action': 'sell', 'netChange': net, 'plusMinus': plusMinus}})
+def testSell(doc, net, plusMinus, reason):
+    histData.update_one({'htime': doc['htime']},{'$set':{'action': 'sell', 'netChange': net, 'plusMinus': plusMinus, 'reason': reason}})
     # print 'sell: ' + str(doc['htime']) # -------------------------------------------------------------
 
 def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
@@ -58,6 +58,7 @@ def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
         result = algorithm(doc, state, algoData)
         try:
             tradeCondition = result[0]
+            reason = result[2]
             # print result # -------------------------------------------------------------
             algoData = result[1]
         except TypeError:
@@ -67,14 +68,14 @@ def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
             state = 'in'
             priceBuy = doc['hclose']
             qty = curBalance / priceBuy
-            testBuy(doc, qty)
+            testBuy(doc, qty, reason)
         if tradeCondition == 'sell' and state == 'in':
             state = 'out'
             priceSell = doc['hclose']
             curBalance = qty * priceSell
             net = qty * (priceSell - priceBuy)
             plusMinus = plusMinus + net
-            testSell(doc, net, plusMinus)
+            testSell(doc, net, plusMinus, reason)
         # print 'buy/sell checked'  # -------------------------------------------------------------
     netGain = plusMinus
     mgDoc = histData.find({'action': 'sell'}).sort('netChange',pymongo.DESCENDING).limit(1)

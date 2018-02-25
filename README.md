@@ -6,10 +6,10 @@ Best,
 Andrew
 
 In progress:
-
+- Create algorithm that functions for new/incoming data.
+- Add buy/sell trigger information to output
 
 To Do:
-- Create algorithm that funcitons for new/incoming data.
 - Determine best way to reference new/current data pulls.
   * Have incoming data draws push to the history db collection?
 - Start building authorized client trading structure
@@ -35,7 +35,7 @@ Completed:
 - Calculation graph x-axis to NOT seconds
 - Add proper notes to code for clarity
 - Repaired RSI indicator.
-- Fixed minor calcPopulateBulk bug
+- Fixed minor calcPopulateBulk bug3
 - Add calculation graph
 - Add RSI calculation.
 - calculations are iterating backwards. Flip iteration and reduce data draw.
