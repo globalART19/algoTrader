@@ -23,6 +23,8 @@ def deleteCalcs():
 # Populate or update indicator calculations from historical data.
 # Loop runs from the oldest datapoint to the newest datapoint.
 def calcPopulateBulk():
+    # Delete previous calculations
+    deleteCalcs()
     # Set db collection titles to be added
     dictTitles = ['m12ema', 'm26ema', 'mave', 'msig', 'rsi']
     # Initialize variables
@@ -94,7 +96,7 @@ def calcPopulateBulk():
                     dataArray.insert(0,[nCur,curPrice])
                     arrLength = len(dataArray)
                     # Determine which indicators to calculate based on how many data points exist (dataArray size) and store them in the data array
-                    if arrLength >= 35:
+                    if arrLength >= 61:
                         m12 = m12ema(dataArray)
                         m26 = m26ema(dataArray)
                         mA = m12 - m26
@@ -104,21 +106,21 @@ def calcPopulateBulk():
                         dataArray[0].extend([mS, rsi])
                         # Remove oldest (unneeded) data point to prevent size creep
                         del dataArray[-1]
-                    elif arrLength >= 26:
+                    elif arrLength >= 52:
                         m12 = m12ema(dataArray)
                         m26 = m26ema(dataArray)
                         mA = m12 - m26
                         mS = None
                         rsi = rsiFunc(dataArray)
                         dataArray[0].extend([m12, m26, mA, mS, rsi])
-                    elif arrLength >= 15:
+                    elif arrLength >= 30:
                         m12 = m12ema(dataArray)
                         m26 = None
                         mA = None
                         mS = None
                         rsi = rsiFunc(dataArray)
                         dataArray[0].extend([m12, m26, mA, mS, rsi])
-                    elif arrLength >= 12:
+                    elif arrLength >= 24:
                         m12 = m12ema(dataArray)
                         m26 = None
                         mA = None
@@ -160,14 +162,26 @@ def m12ema(dataArray):
     lastM12 = dataArray[1][2]
     # If previous tic has M12 data, calculate simply.
     if lastM12 != None:
-        ema = dataArray[0][1] * 2/13 + lastM12 * 11/13
+        ema = dataArray[0][1] * 4/27 + lastM12 * 23/27
     # Else average over previous stored datapoints.
     else:
         curSum = 0
-        for i in range(1,12):
+        for i in range(1,24):
             curSum = curSum + dataArray[i][1]
-        ema = dataArray[0][1] * 2/13 + curSum / 13
+        ema = dataArray[0][1] * 4/27 + curSum / 27
     return ema
+# def m12ema(dataArray):
+#     lastM12 = dataArray[1][2]
+#     # If previous tic has M12 data, calculate simply.
+#     if lastM12 != None:
+#         ema = dataArray[0][1] * 2/13 + lastM12 * 11/13
+#     # Else average over previous stored datapoints.
+#     else:
+#         curSum = 0
+#         for i in range(1,12):
+#             curSum = curSum + dataArray[i][1]
+#         ema = dataArray[0][1] * 2/13 + curSum / 13
+#     return ema
 
 
 # MACD 26 period moving average
@@ -175,14 +189,26 @@ def m26ema(dataArray):
     lastM26 = dataArray[1][3]
     # If previous tic has M26 data, calculate simply.
     if lastM26 != None:
-        ema = dataArray[0][1] * 2/27 + lastM26 * 25/27
+        ema = dataArray[0][1] * 4/55 + lastM26 * 51/55
     # Else average over previous stored datapoints.
     else:
         curSum = 0
-        for i in range(1,26):
+        for i in range(1,52):
             curSum = curSum + dataArray[i][1]
-        ema = dataArray[0][1] * 2/27 + curSum / 27
+        ema = dataArray[0][1] * 4/55 + curSum / 55
     return ema
+# def m26ema(dataArray):
+#     lastM26 = dataArray[1][3]
+#     # If previous tic has M26 data, calculate simply.
+#     if lastM26 != None:
+#         ema = dataArray[0][1] * 2/27 + lastM26 * 25/27
+#     # Else average over previous stored datapoints.
+#     else:
+#         curSum = 0
+#         for i in range(1,26):
+#             curSum = curSum + dataArray[i][1]
+#         ema = dataArray[0][1] * 2/27 + curSum / 27
+#     return ema
 
 # MACD signal 9 period moving average indicator
 def msig(dataArray):
@@ -207,7 +233,7 @@ def rsiFunc(dataArray):
     numLoss = 0
     curPrice = dataArray[0][1]
     # Calculate gain/loss between current/previous price and total gains and losses
-    for i in range(1,15):
+    for i in range(1,30):
         lastPrice = curPrice
         curPrice = dataArray[i][1]
         glValue = curPrice - lastPrice
@@ -230,6 +256,38 @@ def rsiFunc(dataArray):
     rsi = 100 - 100/(1+(gain/numGain)/(abs(loss)/numLoss))
     # print gain, numGain, loss, numLoss, (gain/numGain)/(abs(loss)/numLoss)
     return rsi
+# def rsiFunc(dataArray):
+#     # Initialize variables as proper data types
+#     gain = 0.0
+#     numGain = 0
+#     loss = 0.0
+#     numLoss = 0
+#     curPrice = dataArray[0][1]
+#     # Calculate gain/loss between current/previous price and total gains and losses
+#     for i in range(1,15):
+#         lastPrice = curPrice
+#         curPrice = dataArray[i][1]
+#         glValue = curPrice - lastPrice
+#         if glValue >= 0:
+#             gain += glValue
+#             numGain += 1
+#             # print 'gain: ', gain, numGain # -----------------------------------------
+#         else:
+#             loss += glValue
+#             numLoss += 1
+#             # print 'loss: ', loss, numLoss # ------------------------------------------
+#     # Handle edge cases
+#     if numGain == 0:
+#         # print 'gain: ', gain, dataArray[0][0] # -----------------------------------------
+#         return 0
+#     if numLoss == 0:
+#         # print 'loss: ', loss, dataArray[0][0] # -----------------------------------------
+#         return 100
+#     # Calculate RSI
+#     rsi = 100 - 100/(1+(gain/numGain)/(abs(loss)/numLoss))
+#     # print gain, numGain, loss, numLoss, (gain/numGain)/(abs(loss)/numLoss)
+#     return rsi
+
 
 # Print combined graph of price and indicators to visualize what is happening.
 def cGraph(tStart = 1515000000):

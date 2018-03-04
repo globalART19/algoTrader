@@ -18,7 +18,7 @@ def authClient(sOrR, key, b64secret, passphrase):
 # Remove previous test data
 def deleteTests():
     try:
-        histData.update({}, {'$unset': {'action': 1, 'qty': 1, 'netChange': 1, 'plusMinus': 1}}, multi=True)
+        histData.update({}, {'$unset': {'action': 1, 'qty': 1, 'netChange': 1, 'plusMinus': 1, 'reason': 1}}, multi=True)
     except (KeyboardInterrupt, SystemExit):
         pass
     except:
@@ -38,7 +38,9 @@ def testSell(doc, net, plusMinus, reason):
     histData.update_one({'htime': doc['htime']},{'$set':{'action': 'sell', 'netChange': net, 'plusMinus': plusMinus, 'reason': reason}})
     # print 'sell: ' + str(doc['htime']) # -------------------------------------------------------------
 
-def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
+# 1499193351
+def testAlgorithm(startBalance = 10000.0, tStart = 1499193351, tEnd = 0):
+    deleteTests()
     data = []
     algoData = []
     priceBuy = 0
@@ -49,6 +51,7 @@ def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
     numLoss = 0
     state = 'out'
     curBalance = startBalance
+    # print curBalance
     if tEnd == 0:
         tEnd = histData.find().sort('htime', pymongo.DESCENDING).limit(1)
         for doc in tEnd:
@@ -68,6 +71,7 @@ def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
             state = 'in'
             priceBuy = doc['hclose']
             qty = curBalance / priceBuy
+            # print curBalance, priceBuy
             testBuy(doc, qty, reason)
         if tradeCondition == 'sell' and state == 'in':
             state = 'out'
@@ -100,7 +104,8 @@ def testAlgorithm(startBalance = 10000, tStart = 0, tEnd = 0):
     avgGain = totGain/numGain
     avgLoss = totLoss/numLoss
     totalTrades = numGain + numLoss
-    print ('Net Gain: ', netChange, '\n',
+    netReturn = totGain + totLoss
+    print ('Net Return: ', netReturn, '\n',
            'Max Gain: ', maxGain, 'Average Gain: ', avgGain, '\n',
            'Max Loss: ', maxLoss, 'Average Loss: ', avgLoss, '\n',
            'Total Trades: ', totalTrades)

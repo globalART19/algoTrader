@@ -7,9 +7,10 @@ Andrew
 
 In progress:
 - Create algorithm that functions for new/incoming data.
-- Add buy/sell trigger information to output
+- Add fn to export data ranges to text file
 
 To Do:
+- Add ema trend indicators
 - Determine best way to reference new/current data pulls.
   * Have incoming data draws push to the history db collection?
 - Start building authorized client trading structure
@@ -24,9 +25,10 @@ To Do:
 - Remove ticker data draw to mongo? Shouldn't be needed?
 
 Latest:
-- Repair "updateHist" function
+- Add buy/sell trigger information to output
 
 Completed:
+- Repair "updateHist" function
 - Build authorized client trading testing structure
 - Finish building algorithm
 - Updated graph to show buy/sell points
