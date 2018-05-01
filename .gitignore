@@ -1,3 +1,10 @@
+# User added
+temp-plot.html
+*Graph.html
+Algorithm.py
+algoTrader/AuthClient.py
+/obsFiles
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -8,7 +15,6 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -24,6 +30,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -52,6 +59,11 @@ coverage.xml
 
 # Django stuff:
 *.log
+<<<<<<< HEAD
+=======
+.static_storage/
+.media/
+>>>>>>> 8544e74ee6c3e61a16f50a3defd645b8dfc4c7cf
 local_settings.py
 
 # Flask stuff:
@@ -79,6 +91,7 @@ celerybeat-schedule
 # SageMath parsed files
 *.sage.py
 
+<<<<<<< HEAD
 # dotenv
 .env
 
@@ -86,6 +99,16 @@ celerybeat-schedule
 .venv
 venv/
 ENV/
+=======
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+>>>>>>> 8544e74ee6c3e61a16f50a3defd645b8dfc4c7cf
 
 # Spyder project settings
 .spyderproject

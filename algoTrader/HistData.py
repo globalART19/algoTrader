@@ -1,71 +1,186 @@
 # Trading algorithm start point. May break out functions to new files later.
 
-import gdax
-import pymongo
-import mongoengine
-import collections
-
-#~~~~~~~~~ Add MongoDB launch on startup
-"""
-NEXT STEPS:
-1. create time range variable
-2. convert time range variables into UNIX timestamps
-3. iterate gdax.get_product_historic_rates over full time range
-3.1. write iteration
-3.2. write data to db during iteration (do not append in memory)
-
-"""
-
-#set up mongoengine for algo DB
-mongoengine.connect('algodb_test', host='localhost', port=27017)
+import gdax, pymongo, collections, sys
+from DataFunc import calcPopulateBulk
+from datetime import datetime
+from time import sleep
 
 #DB labeling
-algoDB = pymongo.MongoClient().algodb_test
-#pymongo.collection = algoDB.algoHistTable
-algoHistTable = algoDB.algoHistTable
+db = pymongo.MongoClient().algodb_test
+algoHist = db.algoHistTable2
 
-# drop history table on start
-algoHistTable.drop()
+def updateHistory(prod='BTC-USD'):
+#   Determine latest data time. Set time range and end points.
+    last = algoHist.find().sort('htime',pymongo.DESCENDING).limit(2)
+    # print last
+    j = 0
+    for doc in last:
+        # print 'doc', doc
+        # print 'j', j
+        if (j == 0):
+            # print doc['htime']
+            tStart = float(doc['htime'])
+            # print 'tStart: ', tStart
+        else:
+            histGranularity = tStart - float(doc['htime'])
+            print histGranularity
+        j += 1
+    tEnd = float(gdax.PublicClient().get_time()['epoch'])
+    print (tEnd - tStart)/histGranularity
+    actTot = 0
+#   calc loop spans
+    dataInterval = 349 * histGranularity
+    updateQty = (tEnd-tStart)/histGranularity
+#   define database keys
+    keys = ['htime','hlow','hhigh','hopen','hclose','hvolume']
+#   loop for data immport over time range. Start at tStart and append to db.
+    try:
+        tsCursor = tStart
+        tryCount = 0
+        if (tEnd < tStart + dataInterval):
+            teCursor = tEnd
+        else:
+            teCursor = tStart + dataInterval
+        while (teCursor < tEnd):
+            dataPush = []
+#           Convert time cursors to iso format for GDAX API
+            tsCursorISO = datetime.isoformat(datetime.utcfromtimestamp(tsCursor))
+            teCursorISO = datetime.isoformat(datetime.utcfromtimestamp(teCursor))
+#           Call data from gdax and store locally
+            histData = gdax.PublicClient().get_product_historic_rates(
+                prod,start=tsCursorISO,end=teCursorISO,granularity=histGranularity)
+            if (len(histData) < 345 and teCursor != tEnd):
+                print 'Failed to complete pull. Trying again: ',tryCount
+                tryCount += 1
+                sleep(6)
+            else:
+#           Build dictionary document and push to history collection
+                tryCount = 0
+                for i in range(0,len(histData)-1):
+                    histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
+                    #algoHist.insert_one(histDataDoc)
+                    dataPush.append(histDataDoc)
+                algoHist.insert_many(dataPush)
+                actTot += len(dataPush)
+#               Set cursors for next loop
+                tsCursor = teCursor
+                teCursor = teCursor + dataInterval
+#           Check for last loop condition to prevent overdraw
+            if teCursor > tEnd:
+                teCursor = tEnd
+            if tryCount > 2:
+                print 'HistData pull failed due to crap servers. Try again later'
+                print algoHist.find_one()
+                tryCount = 0
+                cont = raw_input('Continue anyway? (y/n) >>> ')
+                # cont = 'y' # ------------------------------------------------------------------
+                if cont == 'y':
+                    tryCount = 0
+                    for i in range(0,len(histData)-1):
+                        histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
+                        #algoHist.insert_one(histDataDoc)
+                        dataPush.append(histDataDoc)
+                    if len(dataPush) > 0:
+                        algoHist.insert_many(dataPush)
+                        actTot += len(dataPush)
+                        # print len(dataPush), algoHist.find_one()
+    #               Set cursors for next loop
+                    tsCursor = teCursor
+                    teCursor = teCursor + dataInterval
+                    print tsCursor,  teCursor
+                else:
+                    break
+        # Create algoHistTable time index
+        algoHist.create_index('htime')
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except:
+        print ('Unknown exception: popHistory')
+        print sys.exc_info()
+    finally:
+        print('updateHistory complete')
+        print('# docs for full report vs actually pulled: ', actTot, updateQty)
 
-"""
-#DB define document
-class histDataDoc(mongoengine.Document):
-    htime = mongoengine.IntField(required=True)
-    hlow = mongoengine.IntField(required=True)
-    hhigh = mongoengine.IntField(required=True)
-    hopen = mongoengine.IntField(required=True)
-    hclose = mongoengine.IntField(required=True)
-    hvolume = mongoengine.IntField(required=True)
-    """
-#Historical data test functionality
-histDataStart = 1
-histDataEnd = 2
-#granularity= 60,300,900,3600,21600,86400 candle sizes. Max 350 per pull.
-histDataGranularity = 900
 
-#pull and print most recent historical data
-histData1 = gdax.PublicClient().get_product_historic_rates('BTC-USD', granularity=histDataGranularity)
-print histData1[0]
-print histData1[-1]
 
-#format histData1 for database
-keys = ['htime','hlow','hhigh','hopen','hclose','hvolume']
-# histData2 = []
-# histData2.append(zip(keys,histData1[0]))
-# print histData2
+def popHistory(prod, timeRange, timeInt):
+#   drop history table on start
+    algoHist.drop()
 
-for i in range(0,len(histData1)-1):
-    histDataZ = dict(zip(keys,histData1[len(histData1)-1-i]))
-    histData2 = algoHistTable.insert_one(histDataZ)
-
-print('All Stored: {0}'.format(histData2.inserted_id))
-
-print histDataZ
-cur = algoHistTable.find_one({'htime': histDataZ.get('htime')})
-print cur
-for doc in cur:
-    print cur.get(doc)
-print histData1[len(histData1)-1]
-
-# create index on time key
-# algoHistTable.create_index([( 'time', pymongo.ASCENDING )])
+#   set time range and convert inputs to seconds
+    now = gdax.PublicClient().get_time()
+    tEnd = float(now['epoch'])
+    tStart = tEnd - timeRange * 86400
+    histGranularity = timeInt * 60
+    projTot = (tEnd - tStart)/histGranularity
+    actTot = 0
+#   calc loop span
+    dataInterval = 349 * histGranularity
+#   define database keys
+    keys = ['htime','hlow','hhigh','hopen','hclose','hvolume']
+#   loop for data immport over time range. Start at tStart and append to db.
+    try:
+        tsCursor = tStart
+        tryCount = 0
+        if (tEnd < tStart + dataInterval):
+            teCursor = tEnd
+        else:
+            teCursor = tStart + dataInterval
+        while (teCursor < tEnd):
+            dataPush = []
+#           Convert time cursors to iso format for GDAX API
+            tsCursorISO = datetime.isoformat(datetime.utcfromtimestamp(tsCursor))
+            teCursorISO = datetime.isoformat(datetime.utcfromtimestamp(teCursor))
+#           Call data from gdax and store locally
+            histData = gdax.PublicClient().get_product_historic_rates(
+                prod,start=tsCursorISO,end=teCursorISO,granularity=histGranularity)
+            if (len(histData) < 345 and teCursor != tEnd):
+                print 'Failed to complete pull. Trying again: ',tryCount
+                tryCount += 1
+                sleep(6)
+            else:
+#           Build dictionary document and push to history collection
+                tryCount = 0
+                for i in range(0,len(histData)-1):
+                    histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
+                    #algoHist.insert_one(histDataDoc)
+                    dataPush.append(histDataDoc)
+                algoHist.insert_many(dataPush)
+                actTot += len(dataPush)
+#               Set cursors for next loop
+                tsCursor = teCursor
+                teCursor = teCursor + dataInterval
+#           Check for last loop condition to prevent overdraw
+            if teCursor > tEnd:
+                teCursor = tEnd
+            if tryCount > 10:
+                print 'HistData pull failed due to crap servers. Try again later'
+                print algoHist.find_one()
+                tryCount = 0
+                #cont = raw_input('Continue anyway? (y/n) >>> ')
+                cont = 'y' # ------------------------------------------------------------------
+                if cont == 'y':
+                    tryCount = 0
+                    for i in range(0,len(histData)-1):
+                        histDataDoc = dict(zip(keys,histData[len(histData)-1-i]))
+                        #algoHist.insert_one(histDataDoc)
+                        dataPush.append(histDataDoc)
+                    if len(dataPush) > 0:
+                        algoHist.insert_many(dataPush)
+                        actTot += len(dataPush)
+                        print len(dataPush), algoHist.find_one()
+    #               Set cursors for next loop
+                    tsCursor = teCursor
+                    teCursor = teCursor + dataInterval
+                else:
+                    break
+        # Create algoHistTable time index
+        algoHist.create_index('htime')
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except:
+        print ('Unknown exception: popHistory')
+        print sys.exc_info()
+    finally:
+        print('popHistory complete')
+        print('# docs for full report vs actually pulled: ', actTot, projTot)
